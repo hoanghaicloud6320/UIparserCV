@@ -51,4 +51,19 @@ if(TARGET uiparsercv_infer)
   )
   uiparsercv_copy_onnxruntime(component_probe)
   add_test(NAME component_probe COMMAND component_probe)
+
+  add_executable(model_combo_compare model_combo_compare.cpp)
+  target_link_libraries(model_combo_compare PRIVATE uiparsercv_pipeline)
+  target_compile_features(model_combo_compare PRIVATE cxx_std_20)
+  target_compile_definitions(model_combo_compare
+    PRIVATE
+      UIPARSERCV_ICON_MODEL="${UIPARSERCV_ICON_MODEL}"
+      UIPARSERCV_OCR_TINY_DET_MODEL="${UIPARSERCV_OCR_TINY_DET_MODEL}"
+      UIPARSERCV_OCR_TINY_REC_MODEL="${UIPARSERCV_OCR_TINY_REC_MODEL}"
+      UIPARSERCV_OCR_TINY_REC_CONFIG="${UIPARSERCV_OCR_TINY_REC_CONFIG}"
+      UIPARSERCV_OCR_SMALL_DET_MODEL="${UIPARSERCV_OCR_SMALL_DET_MODEL}"
+      UIPARSERCV_OCR_SMALL_REC_MODEL="${UIPARSERCV_OCR_SMALL_REC_MODEL}"
+      UIPARSERCV_OCR_SMALL_REC_CONFIG="${UIPARSERCV_OCR_SMALL_REC_CONFIG}"
+  )
+  uiparsercv_copy_onnxruntime(model_combo_compare)
 endif()

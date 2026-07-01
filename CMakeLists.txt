@@ -20,6 +20,18 @@ set(UIPARSERCV_OCR_REC_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_small_rec.o
   CACHE FILEPATH "Path to PP-OCRv6 recognition model")
 set(UIPARSERCV_OCR_REC_CONFIG "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_small_rec.yml"
   CACHE FILEPATH "Path to PP-OCRv6 recognition YAML config")
+set(UIPARSERCV_OCR_TINY_DET_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_tiny_det.onnx"
+  CACHE FILEPATH "Path to PP-OCRv6 tiny detection model")
+set(UIPARSERCV_OCR_TINY_REC_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_tiny_rec.onnx"
+  CACHE FILEPATH "Path to PP-OCRv6 tiny recognition model")
+set(UIPARSERCV_OCR_TINY_REC_CONFIG "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_tiny_rec.yml"
+  CACHE FILEPATH "Path to PP-OCRv6 tiny recognition YAML config")
+set(UIPARSERCV_OCR_SMALL_DET_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_small_det.onnx"
+  CACHE FILEPATH "Path to PP-OCRv6 small detection model")
+set(UIPARSERCV_OCR_SMALL_REC_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_small_rec.onnx"
+  CACHE FILEPATH "Path to PP-OCRv6 small recognition model")
+set(UIPARSERCV_OCR_SMALL_REC_CONFIG "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_small_rec.yml"
+  CACHE FILEPATH "Path to PP-OCRv6 small recognition YAML config")
 
 include(GNUInstallDirs)
 include(CTest)
@@ -79,6 +91,7 @@ if(TARGET PkgConfig::OpenCV AND TARGET PkgConfig::ONNXRuntime)
     src/infer/onnx_session.cpp
     src/ocr/ocr_detector.cpp
     src/ocr/ocr_recognizer.cpp
+    src/ocr/text_normalizer.cpp
     src/pipeline/ui_element.cpp
     third_party/clipper/clipper.cpp
   )
@@ -107,6 +120,7 @@ if(TARGET PkgConfig::OpenCV AND TARGET PkgConfig::ONNXRuntime)
   endif()
 
   add_library(uiparsercv_pipeline
+    src/export/debug_overlay.cpp
     src/export/json_exporter.cpp
     src/pipeline/pipeline_runner.cpp
   )

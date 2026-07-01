@@ -215,14 +215,56 @@ Chạy pipeline hoàn chỉnh và xuất JSON:
 .\build\uiparsercv_pipeline.exe path\to\screenshot.png --out output.json
 ```
 
+Xuất thêm ảnh debug overlay và metadata tree/box:
+
+```powershell
+.\build\uiparsercv_pipeline.exe path\to\screenshot.png `
+  --out output.json `
+  --debug-image output.overlay.png `
+  --debug-meta output.meta.txt
+```
+
 Output JSON hiện gồm:
 
 - `image`: kích thước ảnh.
 - `stats`: số icon, text regions, candidates.
 - `candidates`: danh sách `UiElementCandidate` sau khi merge icon/text.
+  - `text`: text dùng để hiển thị/label hiện tại.
+  - `raw_text`: text OCR gốc.
+  - `normalized_text`: text sau lớp postprocess.
 - `tree`: containment tree dựng từ candidates.
 
-CLI hiện là bản JSON-first để dễ debug trước khi thêm XML/YAML.
+Debug overlay vẽ box theo node id trong tree. Metadata text ghi lại cùng id, rect, kind, score, text, source, và quan hệ cha-con để đối chiếu nhanh khi tuning detector/OCR/tree.
+
+CLI hiện là bản JSON-first/debug-first để dễ validate trước khi thêm XML/YAML.
+
+Có thể override model ở runtime để so sánh nhanh mà không cần configure/build lại:
+
+```powershell
+.\build\uiparsercv_pipeline.exe path\to\screenshot.png `
+  --ocr-det-model models\ocr\ppocrv6_small_det.onnx `
+  --ocr-rec-model models\ocr\ppocrv6_small_rec.onnx `
+  --ocr-rec-config models\ocr\ppocrv6_small_rec.yml `
+  --out out\small_small.json `
+  --debug-image out\small_small.overlay.png `
+  --debug-meta out\small_small.meta.txt
+```
+
+### Model Combo Compare
+
+Chạy 3 combo OCR chuẩn trên cùng một ảnh và xuất JSON/overlay/meta cho từng combo:
+
+```powershell
+.\build\tools\model_combo_compare.exe capture.png out\model_combo_capture
+```
+
+Combo hiện có:
+
+- `tiny_det_tiny_rec`
+- `tiny_det_small_rec`
+- `small_det_small_rec`
+
+Tool này dùng cùng pipeline C++ và cùng debug overlay, phù hợp để chọn default model bằng mắt trước khi có benchmark định lượng.
 
 ## Module Dự Kiến
 
@@ -262,6 +304,8 @@ Schema trung gian hiện là `UiElementCandidate`: `kind`, `box`, `detection_sco
 
 - OCR DB postprocess hiện bám PaddleOCR C++ flow và dùng Clipper offset cho `unclip`.
 - Candidate merge bám logic OmniParser `remove_overlap_new`: text boxes được ưu tiên, icon hấp thụ text nằm bên trong, icon nằm trong text bị bỏ.
+- UI tree hiện có semantic grouping heuristic nhẹ: gom input bar theo hàng dài ở nửa trên màn hình, và gom button icon+text gần nhau theo cùng hàng.
+- OCR text postprocess đã tách thành lớp riêng, giữ cả raw và normalized text trong candidate JSON.
 - Format export đầu tiên: JSON nên đi trước vì dễ validate và dễ dùng cho tooling. XML/YAML có thể thêm sau khi schema UI tree ổn định.
 
 ## Model Sources

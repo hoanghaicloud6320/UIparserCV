@@ -17,6 +17,8 @@ struct UiElementCandidate {
   RectF box{};
   float detection_score{};
   std::string text;
+  std::string raw_text;
+  std::string normalized_text;
   float text_confidence{};
   bool interactive{};
   std::string source;
@@ -33,4 +35,3 @@ struct CandidateMergeOptions {
     CandidateMergeOptions options = {});
 
 } // namespace uiparsercv::pipeline
-

@@ -1,5 +1,7 @@
 #include "uiparsercv/pipeline/ui_element.hpp"
 
+#include "uiparsercv/ocr/text_normalizer.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -52,11 +54,14 @@ std::vector<UiElementCandidate> build_candidates(
   std::vector<UiElementCandidate> text_candidates;
   text_candidates.reserve(text_regions.size());
   for (std::size_t i = 0; i < text_regions.size(); ++i) {
+    const auto text = ocr::normalize_text(recognized_text[i].text);
     text_candidates.push_back(UiElementCandidate{
       UiElementKind::Text,
       text_regions[i].box,
       text_regions[i].score,
-      recognized_text[i].text,
+      text.normalized,
+      text.raw,
+      text.normalized,
       recognized_text[i].confidence,
       false,
       "box_ocr_content_ocr"
@@ -86,6 +91,7 @@ std::vector<UiElementCandidate> build_candidates(
     }
 
     std::string absorbed_text;
+    std::string absorbed_raw_text;
     float absorbed_confidence = 0.0F;
     int absorbed_count = 0;
     bool icon_inside_text = false;
@@ -98,7 +104,11 @@ std::vector<UiElementCandidate> build_candidates(
           if (!absorbed_text.empty()) {
             absorbed_text += ' ';
           }
+          if (!absorbed_raw_text.empty()) {
+            absorbed_raw_text += ' ';
+          }
           absorbed_text += text_candidates[t].text;
+          absorbed_raw_text += text_candidates[t].raw_text;
           absorbed_confidence += text_candidates[t].text_confidence;
           ++absorbed_count;
         }
@@ -116,6 +126,8 @@ std::vector<UiElementCandidate> build_candidates(
       UiElementKind::Icon,
       icon_box,
       icons[i].score,
+      absorbed_text,
+      absorbed_raw_text,
       absorbed_text,
       absorbed_count > 0 ? absorbed_confidence / static_cast<float>(absorbed_count) : 0.0F,
       true,
@@ -158,4 +170,3 @@ std::vector<UiElementCandidate> build_candidates(
 }
 
 } // namespace uiparsercv::pipeline
-

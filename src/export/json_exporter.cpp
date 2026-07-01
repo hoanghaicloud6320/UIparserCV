@@ -75,6 +75,16 @@ void candidate_json(std::ostream& out, const pipeline::UiElementCandidate& candi
   out << ",\n";
 
   indent(out, level + 2);
+  out << "\"raw_text\": ";
+  json_string(out, candidate.raw_text);
+  out << ",\n";
+
+  indent(out, level + 2);
+  out << "\"normalized_text\": ";
+  json_string(out, candidate.normalized_text);
+  out << ",\n";
+
+  indent(out, level + 2);
   out << "\"text_confidence\": " << candidate.text_confidence << ",\n";
 
   indent(out, level + 2);
@@ -168,4 +178,3 @@ void write_json(std::ostream& out, const pipeline::PipelineResult& result) {
 }
 
 } // namespace uiparsercv::exporter
-
