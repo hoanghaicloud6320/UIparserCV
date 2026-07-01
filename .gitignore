@@ -29,7 +29,6 @@ icon_detector_onnxmodel/
 # Local dependency drops
 vendor/
 external/
-third_party/
 
 # Editor and OS files
 .idea/

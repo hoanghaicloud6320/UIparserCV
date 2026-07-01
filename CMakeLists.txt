@@ -46,6 +46,67 @@ if(PkgConfig_FOUND)
   pkg_check_modules(ONNXRuntime QUIET IMPORTED_TARGET libonnxruntime)
 endif()
 
+function(uiparsercv_copy_onnxruntime target_name)
+  if(NOT TARGET PkgConfig::ONNXRuntime)
+    return()
+  endif()
+
+  find_program(UIPARSERCV_ONNXRUNTIME_DLL onnxruntime.dll
+    HINTS "${ONNXRuntime_LIBDIR}/../bin" "${ONNXRuntime_PREFIX}/bin")
+  find_program(UIPARSERCV_ONNXRUNTIME_PROVIDERS_DLL onnxruntime_providers_shared.dll
+    HINTS "${ONNXRuntime_LIBDIR}/../bin" "${ONNXRuntime_PREFIX}/bin")
+
+  if(UIPARSERCV_ONNXRUNTIME_DLL)
+    add_custom_command(TARGET ${target_name} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${UIPARSERCV_ONNXRUNTIME_DLL}"
+        "$<TARGET_FILE_DIR:${target_name}>")
+  endif()
+
+  if(UIPARSERCV_ONNXRUNTIME_PROVIDERS_DLL)
+    add_custom_command(TARGET ${target_name} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${UIPARSERCV_ONNXRUNTIME_PROVIDERS_DLL}"
+        "$<TARGET_FILE_DIR:${target_name}>")
+  endif()
+endfunction()
+
+if(TARGET PkgConfig::OpenCV AND TARGET PkgConfig::ONNXRuntime)
+  add_library(uiparsercv_infer
+    src/icon/icon_detector.cpp
+    src/infer/onnx_session.cpp
+    src/ocr/ocr_detector.cpp
+    src/ocr/ocr_recognizer.cpp
+    src/pipeline/ui_element.cpp
+    third_party/clipper/clipper.cpp
+  )
+
+  target_include_directories(uiparsercv_infer
+    PUBLIC
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/third_party/clipper
+  )
+
+  target_compile_features(uiparsercv_infer PUBLIC cxx_std_20)
+  target_link_libraries(uiparsercv_infer
+    PUBLIC
+      PkgConfig::OpenCV
+      PkgConfig::ONNXRuntime
+  )
+
+  if(MSVC)
+    target_compile_options(uiparsercv_infer PRIVATE /W4)
+  else()
+    target_compile_options(uiparsercv_infer PRIVATE -Wall -Wextra -Wpedantic)
+    set_source_files_properties(third_party/clipper/clipper.cpp
+      PROPERTIES COMPILE_OPTIONS "-w")
+  endif()
+else()
+  message(STATUS "OpenCV and ONNX Runtime are required for uiparsercv_infer")
+endif()
+
 if(UIPARSERCV_BUILD_PROBES)
   add_subdirectory(tools)
 endif()
