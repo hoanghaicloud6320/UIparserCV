@@ -1,0 +1,51 @@
+cmake_minimum_required(VERSION 3.24)
+
+project(UIparserCV
+  VERSION 0.1.0
+  DESCRIPTION "Parse UI screenshots into structured UI trees"
+  LANGUAGES CXX
+)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+option(UIPARSERCV_BUILD_PROBES "Build independent component probe executables" ON)
+
+set(UIPARSERCV_ICON_MODEL "${CMAKE_SOURCE_DIR}/models/icon_detect/model.onnx"
+  CACHE FILEPATH "Path to OmniParser icon detection ONNX model")
+set(UIPARSERCV_OCR_DET_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/det.onnx"
+  CACHE FILEPATH "Path to PP-OCRv6 detection model")
+set(UIPARSERCV_OCR_REC_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/rec.onnx"
+  CACHE FILEPATH "Path to PP-OCRv6 recognition model")
+
+include(GNUInstallDirs)
+include(CTest)
+
+add_library(uiparsercv_core
+  src/tree/box_tree.cpp
+)
+
+target_include_directories(uiparsercv_core
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+
+target_compile_features(uiparsercv_core PUBLIC cxx_std_20)
+
+if(MSVC)
+  target_compile_options(uiparsercv_core PRIVATE /W4)
+else()
+  target_compile_options(uiparsercv_core PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+  pkg_check_modules(OpenCV QUIET IMPORTED_TARGET opencv4)
+  pkg_check_modules(ONNXRuntime QUIET IMPORTED_TARGET libonnxruntime)
+endif()
+
+if(UIPARSERCV_BUILD_PROBES)
+  add_subdirectory(tools)
+endif()

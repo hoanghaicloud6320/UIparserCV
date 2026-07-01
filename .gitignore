@@ -1,0 +1,40 @@
+# Build outputs
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+Testing/
+
+# Native binaries and objects
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.exe
+*.pdb
+*.ilk
+
+# Generated data
+out/
+outputs/
+reports/
+*.log
+
+# Local conversion scratch
+icon_detector_onnxmodel/
+
+# Local dependency drops
+vendor/
+external/
+third_party/
+
+# Editor and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+Thumbs.db
+Desktop.ini
