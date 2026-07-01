@@ -32,6 +32,12 @@ set(UIPARSERCV_OCR_SMALL_REC_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_small
   CACHE FILEPATH "Path to PP-OCRv6 small recognition model")
 set(UIPARSERCV_OCR_SMALL_REC_CONFIG "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_small_rec.yml"
   CACHE FILEPATH "Path to PP-OCRv6 small recognition YAML config")
+set(UIPARSERCV_OCR_MEDIUM_DET_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_medium_det.onnx"
+  CACHE FILEPATH "Path to PP-OCRv6 medium detection model")
+set(UIPARSERCV_OCR_MEDIUM_REC_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_medium_rec.onnx"
+  CACHE FILEPATH "Path to PP-OCRv6 medium recognition model")
+set(UIPARSERCV_OCR_MEDIUM_REC_CONFIG "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_medium_rec.yml"
+  CACHE FILEPATH "Path to PP-OCRv6 medium recognition YAML config")
 
 include(GNUInstallDirs)
 include(CTest)
@@ -122,6 +128,7 @@ if(TARGET PkgConfig::OpenCV AND TARGET PkgConfig::ONNXRuntime)
   add_library(uiparsercv_pipeline
     src/export/debug_overlay.cpp
     src/export/json_exporter.cpp
+    src/pipeline/tree_grouper.cpp
     src/pipeline/pipeline_runner.cpp
   )
 

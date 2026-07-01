@@ -75,6 +75,10 @@ models/
     ppocrv6_small_det.yml
     ppocrv6_small_rec.onnx
     ppocrv6_small_rec.yml
+    ppocrv6_medium_det.onnx
+    ppocrv6_medium_det.yml
+    ppocrv6_medium_rec.onnx
+    ppocrv6_medium_rec.yml
 ```
 
 Có thể override khi configure:
@@ -263,6 +267,7 @@ Combo hiện có:
 - `tiny_det_tiny_rec`
 - `tiny_det_small_rec`
 - `small_det_small_rec`
+- `medium_det_medium_rec`
 
 Tool này dùng cùng pipeline C++ và cùng debug overlay, phù hợp để chọn default model bằng mắt trước khi có benchmark định lượng.
 
@@ -305,6 +310,7 @@ Schema trung gian hiện là `UiElementCandidate`: `kind`, `box`, `detection_sco
 - OCR DB postprocess hiện bám PaddleOCR C++ flow và dùng Clipper offset cho `unclip`.
 - Candidate merge bám logic OmniParser `remove_overlap_new`: text boxes được ưu tiên, icon hấp thụ text nằm bên trong, icon nằm trong text bị bỏ.
 - UI tree hiện có semantic grouping heuristic nhẹ: gom input bar theo hàng dài ở nửa trên màn hình, và gom button icon+text gần nhau theo cùng hàng.
+- Heuristic grouping được tách riêng ở `pipeline/tree_grouper`, để pipeline runner chỉ điều phối detector/OCR/merge/export.
 - OCR text postprocess đã tách thành lớp riêng, giữ cả raw và normalized text trong candidate JSON.
 - Format export đầu tiên: JSON nên đi trước vì dễ validate và dễ dùng cho tooling. XML/YAML có thể thêm sau khi schema UI tree ổn định.
 
@@ -314,5 +320,7 @@ Schema trung gian hiện là `UiElementCandidate`: `kind`, `box`, `detection_sco
 - PP-OCRv6 tiny ONNX recognition: `PP-OCRv6_tiny_rec_onnx_infer.tar`
 - PP-OCRv6 small ONNX detection: `PP-OCRv6_small_det_onnx_infer.tar`
 - PP-OCRv6 small ONNX recognition: `PP-OCRv6_small_rec_onnx_infer.tar`
+- PP-OCRv6 medium ONNX detection: `PP-OCRv6_medium_det_onnx_infer.tar`
+- PP-OCRv6 medium ONNX recognition: `PP-OCRv6_medium_rec_onnx_infer.tar`
 
 Các link này được PaddleOCR docs liệt kê trong phần Android deployment cho PP-OCRv6 tiny/small ONNX.

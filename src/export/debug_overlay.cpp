@@ -1,5 +1,6 @@
 #include "uiparsercv/export/debug_overlay.hpp"
 
+#include <opencv2/freetype.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
@@ -8,6 +9,7 @@
 #include <fstream>
 #include <iomanip>
 #include <ostream>
+#include <opencv2/core/cvstd.hpp>
 #include <stdexcept>
 #include <string>
 
@@ -37,18 +39,91 @@ cv::Scalar color_for(const pipeline::UiElementCandidate& candidate) {
       : cv::Scalar(25, 95, 230);
 }
 
+std::string compact_label_text(const std::string& text, std::size_t max_chars = 24) {
+  std::string out;
+  out.reserve(std::min(text.size(), max_chars));
+
+  bool pending_space = false;
+  for (const unsigned char ch : text) {
+    if (ch == '\n' || ch == '\r' || ch == '\t' || ch == ' ') {
+      pending_space = !out.empty();
+      continue;
+    }
+    if (pending_space) {
+      out.push_back(' ');
+      pending_space = false;
+    }
+    out.push_back(static_cast<char>(ch));
+    if (out.size() >= max_chars) {
+      out += "...";
+      break;
+    }
+  }
+
+  return out;
+}
+
 void ensure_parent_dir(const std::filesystem::path& path) {
   if (!path.parent_path().empty()) {
     std::filesystem::create_directories(path.parent_path());
   }
 }
 
-void draw_label(cv::Mat& image, const std::string& text, int x, int y, cv::Scalar color) {
-  constexpr double font_scale = 0.43;
-  constexpr int thickness = 1;
+class TextDrawer {
+public:
+  TextDrawer() {
+    const std::filesystem::path font_path{"C:/Windows/Fonts/arial.ttf"};
+    if (!std::filesystem::exists(font_path)) {
+      return;
+    }
+    try {
+      freetype_ = cv::freetype::createFreeType2();
+      freetype_->loadFontData(font_path.string(), 0);
+    } catch (const cv::Exception&) {
+      freetype_.release();
+    }
+  }
+
+  cv::Size measure(const std::string& text, int* baseline) const {
+    if (freetype_) {
+      return freetype_->getTextSize(text, kFontHeight, kThickness, baseline);
+    }
+    return cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, kHersheyScale, kThickness, baseline);
+  }
+
+  void draw(cv::Mat& image, const std::string& text, cv::Point origin, cv::Scalar color) const {
+    if (freetype_) {
+      freetype_->putText(image, text, origin, kFontHeight, color, kThickness, cv::LINE_AA, true);
+      return;
+    }
+    cv::putText(
+        image,
+        text,
+        origin,
+        cv::FONT_HERSHEY_SIMPLEX,
+        kHersheyScale,
+        color,
+        kThickness,
+        cv::LINE_AA);
+  }
+
+private:
+  static constexpr int kFontHeight = 14;
+  static constexpr int kThickness = 1;
+  static constexpr double kHersheyScale = 0.43;
+
+  cv::Ptr<cv::freetype::FreeType2> freetype_;
+};
+
+void draw_label(
+    cv::Mat& image,
+    const std::string& text,
+    int x,
+    int y,
+    cv::Scalar color,
+    const TextDrawer& text_drawer) {
   int baseline = 0;
-  const auto text_size =
-      cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, font_scale, thickness, &baseline);
+  const auto text_size = text_drawer.measure(text, &baseline);
 
   const int left = std::clamp(x, 0, std::max(0, image.cols - text_size.width - 8));
   const int top = std::clamp(y - text_size.height - 8, 0, std::max(0, image.rows - text_size.height - 8));
@@ -58,21 +133,14 @@ void draw_label(cv::Mat& image, const std::string& text, int x, int y, cv::Scala
       color,
       cv::FILLED,
       cv::LINE_AA);
-  cv::putText(
-      image,
-      text,
-      {left + 4, top + text_size.height + 1},
-      cv::FONT_HERSHEY_SIMPLEX,
-      font_scale,
-      cv::Scalar(255, 255, 255),
-      thickness,
-      cv::LINE_AA);
+  text_drawer.draw(image, text, {left + 4, top + text_size.height + 1}, cv::Scalar(255, 255, 255));
 }
 
 void draw_tree_node(
     cv::Mat& image,
     const tree::TreeNode& node,
-    const pipeline::PipelineResult& result) {
+    const pipeline::PipelineResult& result,
+    const TextDrawer& text_drawer) {
   if (node.box.id != 0 && node.box.id != kScreenNodeId) {
     const auto* candidate = candidate_for_node_id(result, node.box.id);
     const cv::Scalar color = candidate != nullptr ? color_for(*candidate) : cv::Scalar(80, 80, 80);
@@ -86,12 +154,16 @@ void draw_tree_node(
     std::string label = "#" + std::to_string(node.box.id);
     if (candidate != nullptr) {
       label += " " + kind_name(*candidate);
+      const std::string text = compact_label_text(candidate->text);
+      if (!text.empty()) {
+        label += ": " + text;
+      }
     }
-    draw_label(image, label, rect.x, rect.y, color);
+    draw_label(image, label, rect.x, rect.y, color, text_drawer);
   }
 
   for (const auto& child : node.children) {
-    draw_tree_node(image, child, result);
+    draw_tree_node(image, child, result, text_drawer);
   }
 }
 
@@ -167,7 +239,8 @@ void write_debug_overlay(
   if (!options.image_path.empty()) {
     ensure_parent_dir(options.image_path);
     cv::Mat overlay = bgr_image.clone();
-    draw_tree_node(overlay, result.tree, result);
+    const TextDrawer text_drawer;
+    draw_tree_node(overlay, result.tree, result, text_drawer);
     draw_legend(overlay);
     if (!cv::imwrite(options.image_path.string(), overlay)) {
       throw std::runtime_error("failed to write debug image: " + options.image_path.string());

@@ -67,6 +67,12 @@ int main(int argc, char** argv) {
         UIPARSERCV_OCR_SMALL_DET_MODEL,
         UIPARSERCV_OCR_SMALL_REC_MODEL,
         UIPARSERCV_OCR_SMALL_REC_CONFIG
+      },
+      {
+        "medium_det_medium_rec",
+        UIPARSERCV_OCR_MEDIUM_DET_MODEL,
+        UIPARSERCV_OCR_MEDIUM_REC_MODEL,
+        UIPARSERCV_OCR_MEDIUM_REC_CONFIG
       }
     };
 
