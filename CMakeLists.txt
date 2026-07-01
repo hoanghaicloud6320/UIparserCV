@@ -103,6 +103,45 @@ if(TARGET PkgConfig::OpenCV AND TARGET PkgConfig::ONNXRuntime)
     set_source_files_properties(third_party/clipper/clipper.cpp
       PROPERTIES COMPILE_OPTIONS "-w")
   endif()
+
+  add_library(uiparsercv_pipeline
+    src/export/json_exporter.cpp
+    src/pipeline/pipeline_runner.cpp
+  )
+
+  target_include_directories(uiparsercv_pipeline
+    PUBLIC
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+  )
+
+  target_compile_features(uiparsercv_pipeline PUBLIC cxx_std_20)
+  target_link_libraries(uiparsercv_pipeline
+    PUBLIC
+      uiparsercv_core
+      uiparsercv_infer
+  )
+
+  if(MSVC)
+    target_compile_options(uiparsercv_pipeline PRIVATE /W4)
+  else()
+    target_compile_options(uiparsercv_pipeline PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_executable(uiparsercv_pipeline_cli
+    src/app/pipeline_cli.cpp
+  )
+  set_target_properties(uiparsercv_pipeline_cli
+    PROPERTIES OUTPUT_NAME uiparsercv_pipeline)
+  target_link_libraries(uiparsercv_pipeline_cli PRIVATE uiparsercv_pipeline)
+  target_compile_definitions(uiparsercv_pipeline_cli
+    PRIVATE
+      UIPARSERCV_ICON_MODEL="${UIPARSERCV_ICON_MODEL}"
+      UIPARSERCV_OCR_DET_MODEL="${UIPARSERCV_OCR_DET_MODEL}"
+      UIPARSERCV_OCR_REC_MODEL="${UIPARSERCV_OCR_REC_MODEL}"
+      UIPARSERCV_OCR_REC_CONFIG="${CMAKE_SOURCE_DIR}/models/ocr/rec.yml"
+  )
+  uiparsercv_copy_onnxruntime(uiparsercv_pipeline_cli)
 else()
   message(STATUS "OpenCV and ONNX Runtime are required for uiparsercv_infer")
 endif()

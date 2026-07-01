@@ -37,6 +37,7 @@ Repo đang ở giai đoạn dựng nền và thử từng component độc lập
 - Probe kiểm tra đường dẫn model.
 - Probe kiểm tra OpenCV đọc ảnh.
 - Probe chạy các component inference trên ảnh smoke test.
+- CLI pipeline đầu tiên: `uiparsercv_pipeline.exe`.
 
 Đã kiểm tra local:
 
@@ -46,6 +47,7 @@ Repo đang ở giai đoạn dựng nền và thử từng component độc lập
 - ONNX Runtime được tìm thấy qua `pkg-config libonnxruntime`, package MSYS2 UCRT64 hiện là `1.26.0`.
 - `ui_tree_probe` pass qua CTest.
 - `component_probe` chạy icon detector, OCR detector, OCR recognizer trên ảnh test tự tạo.
+- `uiparsercv_pipeline.exe` chạy end-to-end trên ảnh demo UI, xuất JSON gồm stats, candidates, và containment tree.
 - `onnxruntime_probe` khởi tạo được ONNX Runtime và load được một ONNX model nhỏ tạo tạm trong `build/tmp`.
 - PP-OCRv6 tiny ONNX det/rec đã được tải về `models/ocr` từ nguồn official PaddleOCR/Paddle model ecology và chạy dummy inference thành công.
 - Icon detector ONNX đã được đặt ở `models/icon_detect/model.onnx` và chạy dummy inference thành công.
@@ -171,6 +173,23 @@ Có thể truyền ảnh thật:
 ```powershell
 .\build\tools\component_probe.exe path\to\screenshot.png
 ```
+
+## Pipeline CLI
+
+Chạy pipeline hoàn chỉnh và xuất JSON:
+
+```powershell
+.\build\uiparsercv_pipeline.exe path\to\screenshot.png --out output.json
+```
+
+Output JSON hiện gồm:
+
+- `image`: kích thước ảnh.
+- `stats`: số icon, text regions, candidates.
+- `candidates`: danh sách `UiElementCandidate` sau khi merge icon/text.
+- `tree`: containment tree dựng từ candidates.
+
+CLI hiện là bản JSON-first để dễ debug trước khi thêm XML/YAML.
 
 ## Module Dự Kiến
 
