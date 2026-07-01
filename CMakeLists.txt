@@ -14,10 +14,12 @@ option(UIPARSERCV_BUILD_PROBES "Build independent component probe executables" O
 
 set(UIPARSERCV_ICON_MODEL "${CMAKE_SOURCE_DIR}/models/icon_detect/model.onnx"
   CACHE FILEPATH "Path to OmniParser icon detection ONNX model")
-set(UIPARSERCV_OCR_DET_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/det.onnx"
+set(UIPARSERCV_OCR_DET_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_tiny_det.onnx"
   CACHE FILEPATH "Path to PP-OCRv6 detection model")
-set(UIPARSERCV_OCR_REC_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/rec.onnx"
+set(UIPARSERCV_OCR_REC_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_small_rec.onnx"
   CACHE FILEPATH "Path to PP-OCRv6 recognition model")
+set(UIPARSERCV_OCR_REC_CONFIG "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_small_rec.yml"
+  CACHE FILEPATH "Path to PP-OCRv6 recognition YAML config")
 
 include(GNUInstallDirs)
 include(CTest)
@@ -139,7 +141,7 @@ if(TARGET PkgConfig::OpenCV AND TARGET PkgConfig::ONNXRuntime)
       UIPARSERCV_ICON_MODEL="${UIPARSERCV_ICON_MODEL}"
       UIPARSERCV_OCR_DET_MODEL="${UIPARSERCV_OCR_DET_MODEL}"
       UIPARSERCV_OCR_REC_MODEL="${UIPARSERCV_OCR_REC_MODEL}"
-      UIPARSERCV_OCR_REC_CONFIG="${CMAKE_SOURCE_DIR}/models/ocr/rec.yml"
+      UIPARSERCV_OCR_REC_CONFIG="${UIPARSERCV_OCR_REC_CONFIG}"
   )
   uiparsercv_copy_onnxruntime(uiparsercv_pipeline_cli)
 else()

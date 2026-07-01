@@ -12,8 +12,8 @@
 namespace uiparsercv::ocr {
 
 struct OcrRecognizerOptions {
-  std::filesystem::path model_path{"models/ocr/rec.onnx"};
-  std::filesystem::path config_path{"models/ocr/rec.yml"};
+  std::filesystem::path model_path{"models/ocr/ppocrv6_small_rec.onnx"};
+  std::filesystem::path config_path{"models/ocr/ppocrv6_small_rec.yml"};
   int image_channels{3};
   int image_height{48};
   int image_width{320};
@@ -34,4 +34,3 @@ private:
 };
 
 } // namespace uiparsercv::ocr
-

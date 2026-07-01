@@ -11,7 +11,7 @@
 namespace uiparsercv::ocr {
 
 struct OcrDetectorOptions {
-  std::filesystem::path model_path{"models/ocr/det.onnx"};
+  std::filesystem::path model_path{"models/ocr/ppocrv6_tiny_det.onnx"};
   int limit_side_len{736};
   int max_side_limit{4000};
   float threshold{0.2F};
@@ -33,4 +33,3 @@ private:
 };
 
 } // namespace uiparsercv::ocr
-

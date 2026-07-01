@@ -14,6 +14,16 @@ if(TARGET PkgConfig::OpenCV)
   add_executable(opencv_probe opencv_probe.cpp)
   target_link_libraries(opencv_probe PRIVATE PkgConfig::OpenCV)
   target_compile_features(opencv_probe PRIVATE cxx_std_20)
+
+  add_executable(synthetic_ui_corpus synthetic_ui_corpus.cpp)
+  target_link_libraries(synthetic_ui_corpus PRIVATE PkgConfig::OpenCV)
+  target_compile_features(synthetic_ui_corpus PRIVATE cxx_std_20)
+  add_test(
+    NAME synthetic_ui_corpus
+    COMMAND synthetic_ui_corpus
+      "${CMAKE_BINARY_DIR}/testdata/synthetic_ui"
+      36
+  )
 else()
   message(STATUS "OpenCV not found via pkg-config; opencv_probe will not be built")
 endif()
@@ -37,7 +47,7 @@ if(TARGET uiparsercv_infer)
       UIPARSERCV_ICON_MODEL="${UIPARSERCV_ICON_MODEL}"
       UIPARSERCV_OCR_DET_MODEL="${UIPARSERCV_OCR_DET_MODEL}"
       UIPARSERCV_OCR_REC_MODEL="${UIPARSERCV_OCR_REC_MODEL}"
-      UIPARSERCV_OCR_REC_CONFIG="${CMAKE_SOURCE_DIR}/models/ocr/rec.yml"
+      UIPARSERCV_OCR_REC_CONFIG="${UIPARSERCV_OCR_REC_CONFIG}"
   )
   uiparsercv_copy_onnxruntime(component_probe)
   add_test(NAME component_probe COMMAND component_probe)

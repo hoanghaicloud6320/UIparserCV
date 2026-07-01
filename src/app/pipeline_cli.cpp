@@ -59,6 +59,10 @@ int main(int argc, char** argv) {
     uiparsercv::pipeline::PipelineRunner runner(options);
     const auto result = runner.run_file(cli.input);
 
+    if (!cli.output.parent_path().empty()) {
+      std::filesystem::create_directories(cli.output.parent_path());
+    }
+
     std::ofstream output(cli.output);
     if (!output) {
       throw std::runtime_error("failed to open output file: " + cli.output.string());
@@ -78,4 +82,3 @@ int main(int argc, char** argv) {
     return 1;
   }
 }
-
