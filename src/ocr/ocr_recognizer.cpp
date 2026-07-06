@@ -78,6 +78,7 @@ std::vector<float> recognition_tensor(
   const float image_wh_ratio = static_cast<float>(bgr_crop.cols) / static_cast<float>(bgr_crop.rows);
   const float max_wh_ratio = std::max(rec_wh_ratio, image_wh_ratio);
 
+  // Mirrors PaddleOCR C++ OCRReisizeNormImg::ResizeNormImg.
   int target_width = static_cast<int>(std::ceil(options.image_height * max_wh_ratio));
   target_width = std::min(target_width, options.max_width);
   int resized_width = std::min(
@@ -175,4 +176,3 @@ const std::vector<std::string>& OcrTextRecognizer::character_list() const {
 }
 
 } // namespace uiparsercv::ocr
-

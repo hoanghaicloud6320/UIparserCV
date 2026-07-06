@@ -53,8 +53,15 @@ cv::Mat resize_for_detection(const cv::Mat& image, const OcrDetectorOptions& opt
   int h = source.rows;
   int w = source.cols;
   float ratio = 1.0F;
-  if (std::min(h, w) < options.limit_side_len) {
+  // Mirrors PaddleOCR C++ DetResizeForTest::ResizeImageType0.
+  if (options.limit_type == "max" && std::max(h, w) > options.limit_side_len) {
+    ratio = static_cast<float>(options.limit_side_len) / static_cast<float>(std::max(h, w));
+  } else if (options.limit_type == "min" && std::min(h, w) < options.limit_side_len) {
     ratio = static_cast<float>(options.limit_side_len) / static_cast<float>(std::min(h, w));
+  } else if (options.limit_type == "resize_long") {
+    ratio = static_cast<float>(options.limit_side_len) / static_cast<float>(std::max(h, w));
+  } else if (options.limit_type != "max" && options.limit_type != "min") {
+    throw std::runtime_error("unsupported OCR detector limit_type: " + options.limit_type);
   }
 
   int resize_h = static_cast<int>(h * ratio);
@@ -124,17 +131,28 @@ std::pair<std::vector<cv::Point2f>, float> mini_box(const std::vector<cv::Point2
 }
 
 float box_score_fast(const cv::Mat& pred, std::vector<cv::Point2f> contour) {
-  int xmin = pred.cols - 1;
-  int xmax = 0;
-  int ymin = pred.rows - 1;
-  int ymax = 0;
+  // Mirrors PaddleOCR DBPostProcess::BoxScoreFast bounds handling.
+  int xmin = std::max(0, static_cast<int>(std::floor(
+      std::min_element(contour.begin(), contour.end(), [](const auto& a, const auto& b) {
+        return a.x < b.x;
+      })->x)));
+  int xmax = std::max(0, static_cast<int>(std::ceil(
+      std::max_element(contour.begin(), contour.end(), [](const auto& a, const auto& b) {
+        return a.x < b.x;
+      })->x)));
+  int ymin = std::max(0, static_cast<int>(std::floor(
+      std::min_element(contour.begin(), contour.end(), [](const auto& a, const auto& b) {
+        return a.y < b.y;
+      })->y)));
+  int ymax = std::max(0, static_cast<int>(std::ceil(
+      std::max_element(contour.begin(), contour.end(), [](const auto& a, const auto& b) {
+        return a.y < b.y;
+      })->y)));
 
-  for (const auto& point : contour) {
-    xmin = std::min(xmin, std::max(0, static_cast<int>(std::floor(point.x))));
-    xmax = std::max(xmax, std::min(pred.cols - 1, static_cast<int>(std::ceil(point.x))));
-    ymin = std::min(ymin, std::max(0, static_cast<int>(std::floor(point.y))));
-    ymax = std::max(ymax, std::min(pred.rows - 1, static_cast<int>(std::ceil(point.y))));
-  }
+  xmin = std::min(xmin, pred.cols - 1);
+  xmax = std::min(xmax, pred.cols - 1);
+  ymin = std::min(ymin, pred.rows - 1);
+  ymax = std::min(ymax, pred.rows - 1);
 
   if (xmax < xmin || ymax < ymin) {
     return 0.0F;
@@ -286,6 +304,7 @@ cv::Mat OcrTextDetector::crop_region(const cv::Mat& bgr_image, const TextRegion&
     {0.0F, crop_height - 1.0F}
   };
 
+  // Mirrors PaddleOCR C++ CropByPolys::GetRotateCropImage.
   cv::Mat transform = cv::getPerspectiveTransform(region.polygon, dst);
   cv::Mat crop;
   cv::warpPerspective(

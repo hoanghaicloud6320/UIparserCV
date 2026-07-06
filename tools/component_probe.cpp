@@ -55,15 +55,16 @@ int main(int argc, char** argv) {
       0.1F
     });
 
-    uiparsercv::ocr::OcrTextDetector detector({
-      UIPARSERCV_OCR_DET_MODEL,
-      736,
-      4000,
-      0.2F,
-      0.4F,
-      1.4F,
-      3000
-    });
+    uiparsercv::ocr::OcrDetectorOptions detector_options;
+    detector_options.model_path = UIPARSERCV_OCR_DET_MODEL;
+    detector_options.limit_side_len = 736;
+    detector_options.limit_type = "min";
+    detector_options.max_side_limit = 4000;
+    detector_options.threshold = 0.2F;
+    detector_options.box_threshold = 0.4F;
+    detector_options.unclip_ratio = 1.4F;
+    detector_options.max_candidates = 3000;
+    uiparsercv::ocr::OcrTextDetector detector(detector_options);
 
     uiparsercv::ocr::OcrTextRecognizer recognizer({
       UIPARSERCV_OCR_REC_MODEL,

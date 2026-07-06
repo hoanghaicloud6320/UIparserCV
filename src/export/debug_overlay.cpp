@@ -11,7 +11,9 @@
 #include <ostream>
 #include <opencv2/core/cvstd.hpp>
 #include <stdexcept>
+#include <cstdint>
 #include <string>
+#include <vector>
 
 namespace uiparsercv::exporter {
 namespace {
@@ -39,28 +41,76 @@ cv::Scalar color_for(const pipeline::UiElementCandidate& candidate) {
       : cv::Scalar(25, 95, 230);
 }
 
-std::string compact_label_text(const std::string& text, std::size_t max_chars = 24) {
+std::string compact_label_text(const std::string& text, std::size_t max_chars = 18) {
   std::string out;
-  out.reserve(std::min(text.size(), max_chars));
+  out.reserve(text.size());
 
   bool pending_space = false;
-  for (const unsigned char ch : text) {
+  std::size_t chars = 0;
+  for (std::size_t i = 0; i < text.size();) {
+    const auto ch = static_cast<unsigned char>(text[i]);
     if (ch == '\n' || ch == '\r' || ch == '\t' || ch == ' ') {
       pending_space = !out.empty();
+      ++i;
       continue;
     }
     if (pending_space) {
       out.push_back(' ');
       pending_space = false;
     }
-    out.push_back(static_cast<char>(ch));
-    if (out.size() >= max_chars) {
+
+    std::size_t char_len = 1;
+    if ((ch & 0xE0U) == 0xC0U) {
+      char_len = 2;
+    } else if ((ch & 0xF0U) == 0xE0U) {
+      char_len = 3;
+    } else if ((ch & 0xF8U) == 0xF0U) {
+      char_len = 4;
+    }
+    if (i + char_len > text.size()) {
+      break;
+    }
+    out.append(text, i, char_len);
+    i += char_len;
+    ++chars;
+
+    if (chars >= max_chars && i < text.size()) {
       out += "...";
       break;
     }
   }
 
   return out;
+}
+
+std::vector<std::uint32_t> utf8_codepoints(const std::string& text) {
+  std::vector<std::uint32_t> result;
+  for (std::size_t i = 0; i < text.size();) {
+    const auto ch = static_cast<unsigned char>(text[i]);
+    if (ch < 0x80) {
+      result.push_back(ch);
+      ++i;
+    } else if ((ch & 0xE0U) == 0xC0U && i + 1 < text.size()) {
+      result.push_back(((ch & 0x1FU) << 6U) | (static_cast<unsigned char>(text[i + 1]) & 0x3FU));
+      i += 2;
+    } else if ((ch & 0xF0U) == 0xE0U && i + 2 < text.size()) {
+      result.push_back(
+          ((ch & 0x0FU) << 12U) |
+          ((static_cast<unsigned char>(text[i + 1]) & 0x3FU) << 6U) |
+          (static_cast<unsigned char>(text[i + 2]) & 0x3FU));
+      i += 3;
+    } else if ((ch & 0xF8U) == 0xF0U && i + 3 < text.size()) {
+      result.push_back(
+          ((ch & 0x07U) << 18U) |
+          ((static_cast<unsigned char>(text[i + 1]) & 0x3FU) << 12U) |
+          ((static_cast<unsigned char>(text[i + 2]) & 0x3FU) << 6U) |
+          (static_cast<unsigned char>(text[i + 3]) & 0x3FU));
+      i += 4;
+    } else {
+      ++i;
+    }
+  }
+  return result;
 }
 
 void ensure_parent_dir(const std::filesystem::path& path) {
@@ -72,28 +122,22 @@ void ensure_parent_dir(const std::filesystem::path& path) {
 class TextDrawer {
 public:
   TextDrawer() {
-    const std::filesystem::path font_path{"C:/Windows/Fonts/arial.ttf"};
-    if (!std::filesystem::exists(font_path)) {
-      return;
-    }
-    try {
-      freetype_ = cv::freetype::createFreeType2();
-      freetype_->loadFontData(font_path.string(), 0);
-    } catch (const cv::Exception&) {
-      freetype_.release();
-    }
+    latin_ = load_font("C:/Windows/Fonts/arial.ttf");
+    japanese_ = load_font("C:/Windows/Fonts/YuGothR.ttc");
+    chinese_ = load_font("C:/Windows/Fonts/msyh.ttc");
+    korean_ = load_font("C:/Windows/Fonts/malgun.ttf");
   }
 
   cv::Size measure(const std::string& text, int* baseline) const {
-    if (freetype_) {
-      return freetype_->getTextSize(text, kFontHeight, kThickness, baseline);
+    if (const auto font = font_for(text)) {
+      return font->getTextSize(text, kFontHeight, kThickness, baseline);
     }
     return cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, kHersheyScale, kThickness, baseline);
   }
 
   void draw(cv::Mat& image, const std::string& text, cv::Point origin, cv::Scalar color) const {
-    if (freetype_) {
-      freetype_->putText(image, text, origin, kFontHeight, color, kThickness, cv::LINE_AA, true);
+    if (const auto font = font_for(text)) {
+      font->putText(image, text, origin, kFontHeight, color, kThickness, cv::LINE_AA, true);
       return;
     }
     cv::putText(
@@ -112,7 +156,42 @@ private:
   static constexpr int kThickness = 1;
   static constexpr double kHersheyScale = 0.43;
 
-  cv::Ptr<cv::freetype::FreeType2> freetype_;
+  static cv::Ptr<cv::freetype::FreeType2> load_font(const std::filesystem::path& path) {
+    if (!std::filesystem::exists(path)) {
+      return {};
+    }
+    try {
+      auto font = cv::freetype::createFreeType2();
+      font->loadFontData(path.string(), 0);
+      return font;
+    } catch (const cv::Exception&) {
+      return {};
+    }
+  }
+
+  cv::Ptr<cv::freetype::FreeType2> font_for(const std::string& text) const {
+    bool has_cjk = false;
+    for (const auto cp : utf8_codepoints(text)) {
+      if ((cp >= 0xAC00U && cp <= 0xD7AFU) || (cp >= 0x1100U && cp <= 0x11FFU)) {
+        return korean_ ? korean_ : latin_;
+      }
+      if ((cp >= 0x3040U && cp <= 0x30FFU) || (cp >= 0x31F0U && cp <= 0x31FFU)) {
+        return japanese_ ? japanese_ : latin_;
+      }
+      if (cp >= 0x4E00U && cp <= 0x9FFFU) {
+        has_cjk = true;
+      }
+    }
+    if (has_cjk) {
+      return chinese_ ? chinese_ : latin_;
+    }
+    return latin_;
+  }
+
+  cv::Ptr<cv::freetype::FreeType2> latin_;
+  cv::Ptr<cv::freetype::FreeType2> japanese_;
+  cv::Ptr<cv::freetype::FreeType2> chinese_;
+  cv::Ptr<cv::freetype::FreeType2> korean_;
 };
 
 void draw_label(
