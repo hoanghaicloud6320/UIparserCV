@@ -67,8 +67,10 @@ TreeNode build_containment_tree(std::vector<Box> boxes) {
     int parent_area = 0;
 
     for (std::size_t candidate = 0; candidate < child; ++candidate) {
-      if (contains(boxes[candidate].rect, boxes[child].rect)) {
-        const int candidate_area = area(boxes[candidate].rect);
+      const int candidate_area = area(boxes[candidate].rect);
+      const int child_area = area(boxes[child].rect);
+      if (candidate_area > child_area &&
+          contains(boxes[candidate].rect, boxes[child].rect)) {
         if (parent == -1 || candidate_area < parent_area) {
           parent = static_cast<int>(candidate);
           parent_area = candidate_area;

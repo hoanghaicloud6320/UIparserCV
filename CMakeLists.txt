@@ -130,6 +130,7 @@ if(TARGET PkgConfig::OpenCV AND TARGET PkgConfig::ONNXRuntime)
     src/export/json_exporter.cpp
     src/pipeline/tree_grouper.cpp
     src/pipeline/pipeline_runner.cpp
+    src/pipeline/visual_container_detector.cpp
   )
 
   target_include_directories(uiparsercv_pipeline

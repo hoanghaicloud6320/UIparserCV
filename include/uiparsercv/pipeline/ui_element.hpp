@@ -9,7 +9,8 @@ namespace uiparsercv::pipeline {
 
 enum class UiElementKind {
   Icon,
-  Text
+  Text,
+  VisualContainer
 };
 
 struct UiElementCandidate {
@@ -26,6 +27,7 @@ struct UiElementCandidate {
 
 struct CandidateMergeOptions {
   float overlap_threshold{0.1F};
+  bool preserve_text_inside_icons{true};
 };
 
 [[nodiscard]] std::vector<UiElementCandidate> build_candidates(

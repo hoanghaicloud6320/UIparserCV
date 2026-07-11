@@ -58,7 +58,13 @@ void candidate_json(std::ostream& out, const pipeline::UiElementCandidate& candi
   out << "{\n";
   indent(out, level + 2);
   out << "\"kind\": ";
-  json_string(out, candidate.kind == pipeline::UiElementKind::Icon ? "icon" : "text");
+  if (candidate.kind == pipeline::UiElementKind::Icon) {
+    json_string(out, "icon");
+  } else if (candidate.kind == pipeline::UiElementKind::Text) {
+    json_string(out, "text");
+  } else {
+    json_string(out, "container");
+  }
   out << ",\n";
 
   indent(out, level + 2);
@@ -150,6 +156,7 @@ void write_json(std::ostream& out, const pipeline::PipelineResult& result) {
   indent(out, 2);
   out << "\"stats\": {\"icons\": " << result.stats.icon_count
       << ", \"text_regions\": " << result.stats.text_region_count
+      << ", \"visual_containers\": " << result.stats.visual_container_count
       << ", \"candidates\": " << result.stats.candidate_count << "},\n";
 
   indent(out, 2);

@@ -5,6 +5,7 @@
 #include "uiparsercv/ocr/ocr_detector.hpp"
 #include "uiparsercv/ocr/ocr_recognizer.hpp"
 #include "uiparsercv/pipeline/ui_element.hpp"
+#include "uiparsercv/pipeline/visual_container_detector.hpp"
 #include "uiparsercv/tree/box_tree.hpp"
 
 #include <opencv2/core.hpp>
@@ -19,6 +20,7 @@ struct PipelineOptions {
   ocr::OcrDetectorOptions ocr_detector;
   ocr::OcrRecognizerOptions ocr_recognizer;
   CandidateMergeOptions candidate_merge;
+  VisualContainerOptions visual_containers;
 };
 
 struct PipelineStats {
@@ -27,6 +29,7 @@ struct PipelineStats {
   std::size_t icon_count{};
   std::size_t text_region_count{};
   std::size_t candidate_count{};
+  std::size_t visual_container_count{};
 };
 
 struct PipelineResult {
@@ -53,4 +56,3 @@ private:
 };
 
 } // namespace uiparsercv::pipeline
-

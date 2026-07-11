@@ -116,7 +116,11 @@ int main(int argc, char** argv) {
     for (std::size_t i = 0; i < std::min<std::size_t>(candidates.size(), 8); ++i) {
       const auto& candidate = candidates[i];
       std::cout << "  candidate[" << i << "] kind="
-                << (candidate.kind == uiparsercv::pipeline::UiElementKind::Icon ? "icon" : "text")
+                << (candidate.kind == uiparsercv::pipeline::UiElementKind::Icon
+                        ? "icon"
+                        : (candidate.kind == uiparsercv::pipeline::UiElementKind::Text
+                               ? "text"
+                               : "container"))
                 << " source=" << candidate.source
                 << " score=" << candidate.detection_score
                 << " text=\"" << candidate.text << "\"\n";

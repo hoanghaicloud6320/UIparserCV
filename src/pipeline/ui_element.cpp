@@ -99,7 +99,7 @@ std::vector<UiElementCandidate> build_candidates(
     for (std::size_t t = 0; t < text_candidates.size(); ++t) {
       const RectF& text_box = text_candidates[t].box;
       if (is_inside(text_box, icon_box)) {
-        text_removed[t] = true;
+        text_removed[t] = !options.preserve_text_inside_icons;
         if (!text_candidates[t].text.empty()) {
           if (!absorbed_text.empty()) {
             absorbed_text += ' ';

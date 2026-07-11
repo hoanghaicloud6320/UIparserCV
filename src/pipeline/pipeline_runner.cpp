@@ -1,6 +1,7 @@
 #include "uiparsercv/pipeline/pipeline_runner.hpp"
 
 #include "uiparsercv/pipeline/tree_grouper.hpp"
+#include "uiparsercv/pipeline/visual_container_detector.hpp"
 
 #include <opencv2/imgcodecs.hpp>
 
@@ -42,6 +43,16 @@ PipelineResult PipelineRunner::run(const cv::Mat& bgr_image) {
       result.text_regions,
       result.recognized_text,
       options_.candidate_merge);
+
+  auto visual_containers = detect_visual_containers(
+      bgr_image,
+      result.candidates,
+      options_.visual_containers);
+  result.stats.visual_container_count = visual_containers.size();
+  result.candidates.insert(
+      result.candidates.end(),
+      visual_containers.begin(),
+      visual_containers.end());
 
   result.tree = build_grouped_ui_tree(
       result.candidates,

@@ -126,6 +126,7 @@ int main(int argc, char** argv) {
     std::cout << "image: " << result.stats.image_width << "x" << result.stats.image_height << '\n'
               << "icons: " << result.stats.icon_count << '\n'
               << "text_regions: " << result.stats.text_region_count << '\n'
+              << "visual_containers: " << result.stats.visual_container_count << '\n'
               << "candidates: " << result.stats.candidate_count << '\n'
               << "output: " << cli.output.string() << '\n';
     if (!cli.debug_image.empty()) {

@@ -32,13 +32,41 @@ const pipeline::UiElementCandidate* candidate_for_node_id(
 }
 
 std::string kind_name(const pipeline::UiElementCandidate& candidate) {
-  return candidate.kind == pipeline::UiElementKind::Icon ? "icon" : "text";
+  if (candidate.kind == pipeline::UiElementKind::Icon) {
+    return "icon";
+  }
+  if (candidate.kind == pipeline::UiElementKind::Text) {
+    return "text";
+  }
+  return "container";
 }
 
 cv::Scalar color_for(const pipeline::UiElementCandidate& candidate) {
-  return candidate.kind == pipeline::UiElementKind::Icon
-      ? cv::Scalar(210, 120, 25)
-      : cv::Scalar(25, 95, 230);
+  if (candidate.kind == pipeline::UiElementKind::Icon) {
+    return cv::Scalar(210, 120, 25);
+  }
+  if (candidate.kind == pipeline::UiElementKind::Text) {
+    return cv::Scalar(25, 95, 230);
+  }
+  return cv::Scalar(40, 180, 210);
+}
+
+bool is_group_node(const tree::TreeNode& node) {
+  return node.box.label.rfind("group:", 0) == 0;
+}
+
+cv::Scalar group_color(const tree::TreeNode& node) {
+  if (node.box.label == "group: input_bar") {
+    return cv::Scalar(45, 190, 80);
+  }
+  if (node.box.label == "group: button") {
+    return cv::Scalar(210, 55, 190);
+  }
+  return cv::Scalar(40, 175, 220);
+}
+
+cv::Scalar relation_color(const tree::TreeNode& parent) {
+  return is_group_node(parent) ? group_color(parent) : cv::Scalar(20, 190, 235);
 }
 
 std::string compact_label_text(const std::string& text, std::size_t max_chars = 18) {
@@ -219,30 +247,52 @@ void draw_tree_node(
     cv::Mat& image,
     const tree::TreeNode& node,
     const pipeline::PipelineResult& result,
-    const TextDrawer& text_drawer) {
+    const TextDrawer& text_drawer,
+    int parent_id = 0,
+    const tree::TreeNode* parent = nullptr) {
   if (node.box.id != 0 && node.box.id != kScreenNodeId) {
     const auto* candidate = candidate_for_node_id(result, node.box.id);
-    const cv::Scalar color = candidate != nullptr ? color_for(*candidate) : cv::Scalar(80, 80, 80);
+    const bool group = is_group_node(node);
+    const cv::Scalar color = candidate != nullptr
+        ? color_for(*candidate)
+        : (group ? group_color(node) : cv::Scalar(80, 80, 80));
     const cv::Rect rect{
         node.box.rect.x,
         node.box.rect.y,
         std::max(1, node.box.rect.width),
         std::max(1, node.box.rect.height)};
-    cv::rectangle(image, rect, color, 2, cv::LINE_AA);
+    cv::rectangle(image, rect, color, group ? 4 : 2, cv::LINE_AA);
+
+    if (parent != nullptr && parent->box.id > kScreenNodeId && parent->children.size() <= 8) {
+      const auto& parent_rect = parent->box.rect;
+      const cv::Point from{
+          parent_rect.x + parent_rect.width / 2,
+          parent_rect.y + std::min(18, parent_rect.height / 2)};
+      const cv::Point to{
+          rect.x + rect.width / 2,
+          rect.y + rect.height / 2};
+      cv::arrowedLine(image, from, to, relation_color(*parent), 2, cv::LINE_AA, 0, 0.025);
+    }
 
     std::string label = "#" + std::to_string(node.box.id);
     if (candidate != nullptr) {
       label += " " + kind_name(*candidate);
+      if (parent_id > kScreenNodeId) {
+        label += " p#" + std::to_string(parent_id);
+      }
       const std::string text = compact_label_text(candidate->text);
       if (!text.empty()) {
         label += ": " + text;
       }
+    } else if (group) {
+      label += " " + node.box.label;
+      label += " [" + std::to_string(node.children.size()) + " children]";
     }
     draw_label(image, label, rect.x, rect.y, color, text_drawer);
   }
 
   for (const auto& child : node.children) {
-    draw_tree_node(image, child, result, text_drawer);
+    draw_tree_node(image, child, result, text_drawer, node.box.id, &node);
   }
 }
 
@@ -278,8 +328,8 @@ void write_tree_metadata(
 }
 
 void draw_legend(cv::Mat& image) {
-  cv::rectangle(image, {8, 8, 220, 54}, cv::Scalar(255, 255, 255), cv::FILLED, cv::LINE_AA);
-  cv::rectangle(image, {8, 8, 220, 54}, cv::Scalar(220, 224, 230), 1, cv::LINE_AA);
+  cv::rectangle(image, {8, 8, 260, 96}, cv::Scalar(255, 255, 255), cv::FILLED, cv::LINE_AA);
+  cv::rectangle(image, {8, 8, 260, 96}, cv::Scalar(220, 224, 230), 1, cv::LINE_AA);
   cv::rectangle(image, {18, 20, 18, 12}, cv::Scalar(25, 95, 230), 2, cv::LINE_AA);
   cv::putText(
       image,
@@ -295,6 +345,19 @@ void draw_legend(cv::Mat& image) {
       image,
       "icon / interactive",
       {44, 52},
+      cv::FONT_HERSHEY_SIMPLEX,
+      0.4,
+      cv::Scalar(35, 40, 48),
+      1,
+      cv::LINE_AA);
+  cv::rectangle(image, {18, 62, 18, 12}, cv::Scalar(40, 180, 210), 2, cv::LINE_AA);
+  cv::putText(image, "visual color container", {44, 73}, cv::FONT_HERSHEY_SIMPLEX, 0.4,
+              cv::Scalar(35, 40, 48), 1, cv::LINE_AA);
+  cv::arrowedLine(image, {18, 86}, {36, 86}, cv::Scalar(20, 190, 235), 2, cv::LINE_AA, 0, 0.2);
+  cv::putText(
+      image,
+      "containment parent -> direct child",
+      {44, 92},
       cv::FONT_HERSHEY_SIMPLEX,
       0.4,
       cv::Scalar(35, 40, 48),
@@ -336,7 +399,32 @@ void write_debug_overlay(
     out << "image: " << result.stats.image_width << 'x' << result.stats.image_height << '\n';
     out << "stats: icons=" << result.stats.icon_count
         << ", text_regions=" << result.stats.text_region_count
+        << ", visual_containers=" << result.stats.visual_container_count
         << ", candidates=" << result.stats.candidate_count << '\n';
+    out << '\n';
+    out << "RAW ICON DETECTIONS\n\n";
+    for (std::size_t i = 0; i < result.icons.size(); ++i) {
+      const auto& detection = result.icons[i];
+      out << "- icon_raw[" << i << "] rect=["
+          << detection.box.x << ',' << detection.box.y << ','
+          << detection.box.width << ',' << detection.box.height << "]"
+          << " score=" << std::fixed << std::setprecision(3) << detection.score
+          << " label='" << detection.label << "'" << '\n';
+    }
+    out << '\n';
+    out << "RAW OCR REGIONS + RECOGNITION\n\n";
+    for (std::size_t i = 0; i < result.text_regions.size(); ++i) {
+      const auto& region = result.text_regions[i];
+      out << "- ocr_raw[" << i << "] rect=["
+          << region.box.x << ',' << region.box.y << ','
+          << region.box.width << ',' << region.box.height << "]"
+          << " det=" << std::fixed << std::setprecision(3) << region.score;
+      if (i < result.recognized_text.size()) {
+        out << " rec=" << result.recognized_text[i].confidence
+            << " text='" << result.recognized_text[i].text << "'";
+      }
+      out << '\n';
+    }
     out << '\n';
     out << "TREE + BOX METADATA\n\n";
     write_tree_metadata(out, result.tree, result, 0);
