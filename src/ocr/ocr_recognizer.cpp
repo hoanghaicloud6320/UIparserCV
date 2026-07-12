@@ -62,6 +62,11 @@ std::vector<std::string> load_character_dict(const std::filesystem::path& config
     }
   }
 
+  // PaddleOCR recognition models reserve a class for the word-separator even
+  // though the exported inference YAML does not list it in character_dict.
+  // It is appended after the dictionary by BaseRecLabelDecode when
+  // use_space_char is enabled during training.
+  characters.push_back(" ");
   characters.insert(characters.begin(), "blank");
   return characters;
 }
