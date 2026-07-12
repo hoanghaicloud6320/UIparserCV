@@ -39,6 +39,13 @@ else()
 endif()
 
 if(TARGET uiparsercv_infer)
+  add_executable(uitag_yolo_probe uitag_yolo_probe.cpp)
+  target_link_libraries(uitag_yolo_probe PRIVATE uiparsercv_infer)
+  target_compile_features(uitag_yolo_probe PRIVATE cxx_std_20)
+  target_compile_definitions(uitag_yolo_probe
+    PRIVATE UIPARSERCV_UITAG_MODEL="${UIPARSERCV_UITAG_MODEL}")
+  uiparsercv_copy_onnxruntime(uitag_yolo_probe)
+
   add_executable(boundaryless_group_probe boundaryless_group_probe.cpp)
   target_link_libraries(boundaryless_group_probe PRIVATE uiparsercv_pipeline)
   target_compile_features(boundaryless_group_probe PRIVATE cxx_std_20)

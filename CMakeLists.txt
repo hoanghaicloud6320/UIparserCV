@@ -14,6 +14,8 @@ option(UIPARSERCV_BUILD_PROBES "Build independent component probe executables" O
 
 set(UIPARSERCV_ICON_MODEL "${CMAKE_SOURCE_DIR}/models/icon_detect/model.onnx"
   CACHE FILEPATH "Path to OmniParser icon detection ONNX model")
+set(UIPARSERCV_UITAG_MODEL "${CMAKE_SOURCE_DIR}/uitag-yolo11s-ui-detect-v1.onnx"
+  CACHE FILEPATH "Path to the experimental UITag YOLO11 UI detector ONNX model")
 set(UIPARSERCV_OCR_DET_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_tiny_det.onnx"
   CACHE FILEPATH "Path to PP-OCRv6 detection model")
 set(UIPARSERCV_OCR_REC_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_small_rec.onnx"
