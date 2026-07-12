@@ -14,8 +14,14 @@ option(UIPARSERCV_BUILD_PROBES "Build independent component probe executables" O
 
 set(UIPARSERCV_ICON_MODEL "${CMAKE_SOURCE_DIR}/models/icon_detect/model.onnx"
   CACHE FILEPATH "Path to OmniParser icon detection ONNX model")
-set(UIPARSERCV_UITAG_MODEL "${CMAKE_SOURCE_DIR}/uitag-yolo11s-ui-detect-v1.onnx"
+set(UIPARSERCV_UITAG_MODEL "${CMAKE_SOURCE_DIR}/models/uitag/uitag-yolo11s-ui-detect-v1.onnx"
   CACHE FILEPATH "Path to the experimental UITag YOLO11 UI detector ONNX model")
+# Migrate build directories configured before the model was moved under models/.
+if(UIPARSERCV_UITAG_MODEL STREQUAL "${CMAKE_SOURCE_DIR}/uitag-yolo11s-ui-detect-v1.onnx")
+  set(UIPARSERCV_UITAG_MODEL
+    "${CMAKE_SOURCE_DIR}/models/uitag/uitag-yolo11s-ui-detect-v1.onnx"
+    CACHE FILEPATH "Path to the experimental UITag YOLO11 UI detector ONNX model" FORCE)
+endif()
 set(UIPARSERCV_OCR_DET_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_tiny_det.onnx"
   CACHE FILEPATH "Path to PP-OCRv6 detection model")
 set(UIPARSERCV_OCR_REC_MODEL "${CMAKE_SOURCE_DIR}/models/ocr/ppocrv6_small_rec.onnx"
@@ -95,6 +101,7 @@ endfunction()
 
 if(TARGET PkgConfig::OpenCV AND TARGET PkgConfig::ONNXRuntime)
   add_library(uiparsercv_infer
+    src/detect/uitag_detector.cpp
     src/icon/icon_detector.cpp
     src/infer/onnx_session.cpp
     src/ocr/ocr_detector.cpp

@@ -1,134 +1,153 @@
-# UI Grouping Research Notes
+# Model-first UI Parsing Handoff
 
-This is a living draft for grouping experiments. Keep hypotheses, failures, and
-possible next steps here so later attempts do not erase earlier reasoning.
+This document supersedes the heuristic-grouping research plan. The previous
+segmentation experiments were useful for exposing failure modes, but they are
+not the intended primary detection architecture going forward.
 
-## Stable baseline
+## Architecture decision
 
-- Preserve raw OCR boxes even when they are inside an icon/card box.
-- Build the final tree with strict immediate containment only.
-- Equal rectangles remain siblings.
-- Visual/color container detection is experimental and disabled by default.
+Use the UITag YOLO11 UI detector as the primary source of UI element boxes.
+Do not continue growing the hand-written line, color, contour, or proximity
+heuristics into a competing general-purpose segmenter.
 
-## Problem statement
+The reusable C++ detector is implemented in `src/detect/uitag_detector.cpp`,
+with `tools/uitag_yolo_probe.cpp` retained as an independent debug executable.
+It currently runs independently from the production pipeline and implements:
 
-The advanced problem is not simply "find rectangles". It is to propose and
-rank a laminar hierarchy of UI regions from incomplete and ambiguous evidence.
-Multiple row/column decompositions can be geometrically plausible.
+- ONNX Runtime inference without Python or Ultralytics at runtime;
+- 640 x 640 tiled inference with 20% overlap;
+- edge-anchored tiles matching the original UITag implementation;
+- YOLO11 output decoding for nine UI classes;
+- per-tile filtering/NMS and class-agnostic cross-tile NMS;
+- full-image coordinate mapping;
+- raw JSON and debug-overlay output.
 
-### Hard constraints for the main tree
+The standalone probe has been smoke-tested on finance, ecommerce, and weather
+screenshots. Desktop results contain useful element candidates. The mobile
+weather image produces mostly `Unknown`, which is consistent with the model's
+desktop-oriented training domain.
 
-- No cycles.
-- A node has one immediate parent.
-- Parent strictly contains child.
-- Siblings must not partially overlap.
-- Do not store transitive edges.
-- Do not cut through high-confidence atomic OCR/icon boxes without strong
-  contrary evidence.
-- Abstaining is valid when evidence is weak.
+## Target pipeline
 
-### Positive evidence
+```text
+Screenshot
+  -> UITag tiled detector (primary element proposals)
+  -> OCR detector + recognizer (text content and text boxes)
+  -> proposal normalization and deduplication
+  -> conservative relation/grouping stage
+  -> strict immediate-containment tree
+  -> JSON + debug overlay
+```
 
-- Explicit geometric containment.
-- Boundary line support, corners, and T-junctions.
-- Relative proximity: internal gap is clearly smaller than external gap.
-- Horizontal/vertical/baseline alignment.
-- Repeated geometry and repeated internal child layout.
-- Negative-space gutters.
-- Inside/outside color difference and locally homogeneous backgrounds.
-- Stability across scale, blur, and edge thresholds.
-- Reading order (weak evidence only).
+### UITag detector responsibilities
 
-### Negative evidence
+- Find atomic controls and useful UI regions.
+- Preserve the model class, confidence, and original box.
+- Preserve raw detections before any merging.
+- Produce deterministic tiled results for the same image and thresholds.
 
-- Partial overlap with stronger regions.
-- Photograph/high-texture interiors.
-- Letter contours and decorative outlines.
-- A hypothesis supported only by a fixed pixel threshold.
-- A group that adds complexity without explaining repeated structure.
+The model class is evidence, not ground truth. Initial overlays show useful
+boxes with noisy labels, especially among `Button`, `Input_Elements`,
+`Information_Display`, and `Unknown`.
 
-## Attempts
+### OCR responsibilities
 
-### Baseline: strict containment
+- Recognize text independently of the model class.
+- Keep tight OCR geometry; never replace a text box with a larger model box.
+- Associate text with a model proposal only during relation/grouping.
+- Permit OCR-only elements where the model misses visible text.
 
-Status: accepted. Deterministic and explainable.
+### Normalization responsibilities
 
-### Visual closed-contour containers
+- Remove cross-tile duplicates without hiding the raw detections.
+- Clamp coordinates and reject invalid boxes.
+- Mark near-identical OCR/model boxes as associated observations rather than
+  blindly deleting one source.
+- Keep source provenance and confidence in exported debug data.
 
-Status: retained as an experimental feature, disabled by default.
+### Grouping responsibilities
 
-Useful on flat weather cards and input fields. False positives occur on large
-letters and product photographs. The general problem should operate on line
-arrangements rather than require closed contours.
+Grouping becomes a conservative relation layer over model and OCR proposals,
+not an image segmenter.
 
-### Attempt 1: conservative boundaryless repeated groups
+Start with:
 
-Scope:
+1. strict immediate containment;
+2. text-to-control association when containment or proximity is unambiguous;
+3. repeated sibling structure only when supported by multiple model boxes;
+4. abstention when several layouts remain plausible.
 
-- Repeated horizontal icon-text pairs.
-- Repeated vertical primary-secondary text stacks.
-- Relative gaps and alignment, not fixed pixels alone.
-- Do not regroup elements already explained by an existing containing box.
-- Require at least two geometrically similar instances.
-- Reject member reuse and partial-overlap conflicts.
-- Emit inferred group candidates with explicit source/confidence for debug.
+The selected hierarchy must remain laminar: one immediate parent per node, no
+cycles, no transitive edges, and no partially overlapping siblings.
 
-Non-goals:
+## Role of the old heuristics
 
-- Large section grouping.
-- Toolbar-wide grouping.
-- Choosing row versus column decompositions in tables.
-- Semantic inference from recognized text.
-- Competing hypotheses in the main tree.
+The existing visual-container, line-rectangle, and boundaryless grouping code
+must not automatically feed the default pipeline after model integration.
+Keep it temporarily for comparison and diagnostics.
 
-### Attempt 1.5: four-side line rectangle proposals
+Later, an individual heuristic may return only as bounded supporting evidence,
+for example:
 
-Scope:
+- suggesting a container around several already-detected model elements;
+- splitting an obviously oversized model proposal;
+- recovering a candidate when both model and OCR have a documented miss;
+- increasing or decreasing a relation score without creating a box itself.
 
-- Keep Attempt 1 unchanged.
-- Extract horizontal/vertical line segments from per-channel color edges.
-- Merge near-collinear segments and bridge small occlusion gaps.
-- Generate only rectangles with support on all four sides.
-- Reject very small/large rectangles and high-texture interiors.
-- Deduplicate against existing detector boxes and other proposals.
-- Feed accepted proposals into strict containment before boundaryless fallback.
+Any such use needs an ablation against the model-only baseline. A heuristic is
+accepted only when it improves a named failure class without causing broad
+false-positive growth.
 
-Deferred:
+## Integration sequence
 
-- Three-side rectangles with an inferred missing edge.
-- T-junction/minimal-face extraction.
-- Proposal competition and global laminar selection.
+### Phase 1: detector component (complete)
 
-Observed on `exper1`:
+- [x] Move the tested probe logic into a reusable `UitagDetector` component.
+- [x] Keep the standalone probe as a regression/debug executable.
+- [x] Add unit tests for tile positions, output decoding, coordinate restoration,
+  and cross-tile NMS.
+- [x] Record inference options and model metadata in raw output.
 
-- Initial four-side enumeration produced too many composite rectangles.
-- Minimal-proposal filtering reduced weather from 41 proposals to 9 and
-  ecommerce from 23 to 4.
-- Strong examples: weather rows/cards, ecommerce price/action panels,
-  synthetic input fields and buttons.
-- Known ambiguity: a proposal can join adjacent hourly cards when their shared
-  or outer edges are stronger than the missing internal face evidence.
-- One finance sidebar proposal extends beyond the visually intended item,
-  showing that four supported lines alone do not guarantee the desired cell.
-- Attempt 1 boundaryless groups remain useful after line rectangles: weather
-  metric stacks and ecommerce feature text stacks still survive where no line
-  rectangle explains them.
-- Evidence precedence matters: exact closed-contour cells outrank composite
-  line rectangles that contain or partially cross them.
-- Weather reaches six exact hourly cards after retaining closed-contour child
-  cells and suppressing conflicting line proposals.
-- Photo suppression must combine texture with low atomic-content count; using
-  texture alone misclassifies information-dense UI panels as photographs.
+### Phase 2: model-only exper1 baseline
 
-## Might try later
+- Run all exper1 images with unchanged thresholds.
+- Save raw model detections and overlays separately from every heuristic run.
+- Manually inspect desktop and mobile results.
+- Catalogue duplicate boxes, oversized boxes, missed controls, class noise,
+  and domain-shift failures.
 
-- Build a horizontal/vertical line arrangement with merged collinear segments.
-- Use T-junctions and minimal planar faces; infer missing edges from continuation.
-- Score repeated templates jointly instead of greedily selecting pairs.
-- Detect photographic/high-texture exclusion zones.
-- Reclassify large YOLO icon boxes with many distributed children as containers.
-- Preserve competing row/column hypotheses outside the selected tree.
-- Use a minimum-description-length/complexity penalty.
-- Measure proposal stability across image scale and detector thresholds.
-- Create manual annotations for acceptable alternative hierarchies, not one
-  artificially unique ground-truth tree.
+### Phase 3: OCR association
+
+- Combine raw OCR and model observations without constructing semantic groups.
+- Visualize both boxes and their association edges.
+- Verify that tight text boxes remain intact, including the prior weather-card
+  failure where text geometry was confused with a larger card box.
+
+### Phase 4: conservative tree
+
+- Build immediate containment from normalized candidates.
+- Add only high-confidence text/control associations.
+- Compare against model-only and the committed heuristic baseline.
+
+### Phase 5: optional support evidence
+
+- Revisit line/color/proximity evidence only for specific catalogued misses.
+- Require a measurable improvement and keep every support feature removable.
+
+## Immediate next task
+
+Do not integrate the detector directly into `PipelineRunner` yet. Produce a
+complete model-only exper1 run next. That run becomes the baseline for deciding
+merge and grouping behavior.
+
+## Historical findings retained
+
+- Strict immediate containment is deterministic and remains useful downstream.
+- Tight OCR boxes must survive even inside larger icon/card/model boxes.
+- Closed contours and four supported lines frequently generate both valid UI
+  regions and convincing false positives.
+- Boundaryless alignment/proximity can describe real groups, but it also admits
+  several plausible layouts and should not be a primary detector.
+- Texture alone cannot reliably distinguish photographs from dense UI panels.
+- A visually closed region is neither necessary nor sufficient for a semantic
+  container.

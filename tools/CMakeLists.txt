@@ -46,6 +46,11 @@ if(TARGET uiparsercv_infer)
     PRIVATE UIPARSERCV_UITAG_MODEL="${UIPARSERCV_UITAG_MODEL}")
   uiparsercv_copy_onnxruntime(uitag_yolo_probe)
 
+  add_executable(uitag_detector_test uitag_detector_test.cpp)
+  target_link_libraries(uitag_detector_test PRIVATE uiparsercv_infer)
+  target_compile_features(uitag_detector_test PRIVATE cxx_std_20)
+  add_test(NAME uitag_detector_test COMMAND uitag_detector_test)
+
   add_executable(boundaryless_group_probe boundaryless_group_probe.cpp)
   target_link_libraries(boundaryless_group_probe PRIVATE uiparsercv_pipeline)
   target_compile_features(boundaryless_group_probe PRIVATE cxx_std_20)
