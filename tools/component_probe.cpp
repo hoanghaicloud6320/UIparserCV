@@ -120,7 +120,9 @@ int main(int argc, char** argv) {
                         ? "icon"
                         : (candidate.kind == uiparsercv::pipeline::UiElementKind::Text
                                ? "text"
-                               : "container"))
+                               : (candidate.kind == uiparsercv::pipeline::UiElementKind::VisualContainer
+                                      ? "container"
+                                      : "group")))
                 << " source=" << candidate.source
                 << " score=" << candidate.detection_score
                 << " text=\"" << candidate.text << "\"\n";

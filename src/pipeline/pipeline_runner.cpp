@@ -1,6 +1,8 @@
 #include "uiparsercv/pipeline/pipeline_runner.hpp"
 
 #include "uiparsercv/pipeline/tree_grouper.hpp"
+#include "uiparsercv/pipeline/boundaryless_group_detector.hpp"
+#include "uiparsercv/pipeline/line_rect_detector.hpp"
 #include "uiparsercv/pipeline/visual_container_detector.hpp"
 
 #include <opencv2/imgcodecs.hpp>
@@ -53,6 +55,27 @@ PipelineResult PipelineRunner::run(const cv::Mat& bgr_image) {
       result.candidates.end(),
       visual_containers.begin(),
       visual_containers.end());
+
+  auto line_rects = detect_line_rects(
+      bgr_image,
+      result.candidates,
+      options_.line_rects);
+  result.stats.line_rect_count = line_rects.size();
+  result.candidates.insert(
+      result.candidates.end(),
+      line_rects.begin(),
+      line_rects.end());
+
+  auto inferred_groups = detect_boundaryless_groups(
+      result.candidates,
+      result.stats.image_width,
+      result.stats.image_height,
+      options_.boundaryless_groups);
+  result.stats.inferred_group_count = inferred_groups.size();
+  result.candidates.insert(
+      result.candidates.end(),
+      inferred_groups.begin(),
+      inferred_groups.end());
 
   result.tree = build_grouped_ui_tree(
       result.candidates,

@@ -130,6 +130,8 @@ if(TARGET PkgConfig::OpenCV AND TARGET PkgConfig::ONNXRuntime)
     src/export/json_exporter.cpp
     src/pipeline/tree_grouper.cpp
     src/pipeline/pipeline_runner.cpp
+    src/pipeline/boundaryless_group_detector.cpp
+    src/pipeline/line_rect_detector.cpp
     src/pipeline/visual_container_detector.cpp
   )
 

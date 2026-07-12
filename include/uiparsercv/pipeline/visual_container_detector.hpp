@@ -9,7 +9,7 @@
 namespace uiparsercv::pipeline {
 
 struct VisualContainerOptions {
-  bool enabled{false};
+  bool enabled{true};
   float min_area_ratio{0.004F};
   float max_area_ratio{0.92F};
   float min_rectangularity{0.68F};

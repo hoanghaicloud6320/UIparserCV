@@ -39,6 +39,16 @@ else()
 endif()
 
 if(TARGET uiparsercv_infer)
+  add_executable(boundaryless_group_probe boundaryless_group_probe.cpp)
+  target_link_libraries(boundaryless_group_probe PRIVATE uiparsercv_pipeline)
+  target_compile_features(boundaryless_group_probe PRIVATE cxx_std_20)
+  add_test(NAME boundaryless_group_probe COMMAND boundaryless_group_probe)
+
+  add_executable(line_rect_probe line_rect_probe.cpp)
+  target_link_libraries(line_rect_probe PRIVATE uiparsercv_pipeline)
+  target_compile_features(line_rect_probe PRIVATE cxx_std_20)
+  add_test(NAME line_rect_probe COMMAND line_rect_probe)
+
   add_executable(component_probe component_probe.cpp)
   target_link_libraries(component_probe PRIVATE uiparsercv_infer)
   target_compile_features(component_probe PRIVATE cxx_std_20)

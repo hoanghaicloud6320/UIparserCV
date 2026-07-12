@@ -23,8 +23,10 @@ std::string label_for(const UiElementCandidate& candidate) {
     label << "icon";
   } else if (candidate.kind == UiElementKind::Text) {
     label << "text";
-  } else {
+  } else if (candidate.kind == UiElementKind::VisualContainer) {
     label << "container";
+  } else {
+    label << "group";
   }
   if (!candidate.text.empty()) {
     label << ": " << candidate.text;

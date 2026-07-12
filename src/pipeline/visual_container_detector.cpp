@@ -22,6 +22,43 @@ float iou(const RectF& lhs, const RectF& rhs) {
   return intersection / (rect_area(lhs) + rect_area(rhs) - intersection + 1e-6F);
 }
 
+bool strict_contains(const RectF& outer, const RectF& inner) {
+  return rect_area(outer) > rect_area(inner) &&
+         outer.x <= inner.x && outer.y <= inner.y &&
+         outer.x + outer.width >= inner.x + inner.width &&
+         outer.y + outer.height >= inner.y + inner.height;
+}
+
+float interior_edge_density(const cv::Mat& edges, const RectF& box) {
+  const cv::Rect rect{
+    std::max(0, static_cast<int>(std::round(box.x))),
+    std::max(0, static_cast<int>(std::round(box.y))),
+    std::max(1, static_cast<int>(std::round(box.width))),
+    std::max(1, static_cast<int>(std::round(box.height)))
+  };
+  const cv::Rect clipped = rect & cv::Rect{0, 0, edges.cols, edges.rows};
+  if (clipped.area() <= 0) {
+    return 0.0F;
+  }
+  return static_cast<float>(cv::countNonZero(edges(clipped))) /
+         static_cast<float>(clipped.area());
+}
+
+int atomic_center_count(
+    const RectF& box,
+    const std::vector<UiElementCandidate>& existing) {
+  int count = 0;
+  for (const auto& candidate : existing) {
+    const float center_x = candidate.box.x + candidate.box.width * 0.5F;
+    const float center_y = candidate.box.y + candidate.box.height * 0.5F;
+    if (center_x >= box.x && center_x <= box.x + box.width &&
+        center_y >= box.y && center_y <= box.y + box.height) {
+      ++count;
+    }
+  }
+  return count;
+}
+
 RectF to_rectf(const cv::Rect& rect) {
   return RectF{
     static_cast<float>(rect.x),
@@ -58,6 +95,10 @@ bool merely_wraps_one_candidate(
     const float bottom = std::min(box.y + box.height, candidate.box.y + candidate.box.height);
     const float intersection = std::max(0.0F, right - left) * std::max(0.0F, bottom - top);
     if (intersection / candidate_area >= 0.90F) {
+      return true;
+    }
+    const float box_area_safe = std::max(1.0F, box_area);
+    if (candidate_area <= box_area * 1.45F && intersection / box_area_safe >= 0.90F) {
       return true;
     }
   }
@@ -174,7 +215,28 @@ std::vector<UiElementCandidate> detect_visual_containers(
   std::stable_sort(result.begin(), result.end(), [](const auto& lhs, const auto& rhs) {
     return rect_area(lhs.box) > rect_area(rhs.box);
   });
-  return result;
+  std::vector<bool> suppress(result.size(), false);
+  for (std::size_t outer = 0; outer < result.size(); ++outer) {
+    const float area_ratio = rect_area(result[outer].box) / image_area;
+    if (area_ratio < 0.10F ||
+        interior_edge_density(edges, result[outer].box) < 0.055F ||
+        atomic_center_count(result[outer].box, existing) > 3) {
+      continue;
+    }
+    for (std::size_t inner = outer + 1; inner < result.size(); ++inner) {
+      if (strict_contains(result[outer].box, result[inner].box)) {
+        suppress[inner] = true;
+      }
+    }
+  }
+  std::vector<UiElementCandidate> filtered;
+  filtered.reserve(result.size());
+  for (std::size_t i = 0; i < result.size(); ++i) {
+    if (!suppress[i]) {
+      filtered.push_back(std::move(result[i]));
+    }
+  }
+  return filtered;
 }
 
 } // namespace uiparsercv::pipeline

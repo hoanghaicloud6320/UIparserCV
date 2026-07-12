@@ -10,7 +10,8 @@ namespace uiparsercv::pipeline {
 enum class UiElementKind {
   Icon,
   Text,
-  VisualContainer
+  VisualContainer,
+  InferredGroup
 };
 
 struct UiElementCandidate {

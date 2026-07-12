@@ -5,6 +5,8 @@
 #include "uiparsercv/ocr/ocr_detector.hpp"
 #include "uiparsercv/ocr/ocr_recognizer.hpp"
 #include "uiparsercv/pipeline/ui_element.hpp"
+#include "uiparsercv/pipeline/boundaryless_group_detector.hpp"
+#include "uiparsercv/pipeline/line_rect_detector.hpp"
 #include "uiparsercv/pipeline/visual_container_detector.hpp"
 #include "uiparsercv/tree/box_tree.hpp"
 
@@ -21,6 +23,8 @@ struct PipelineOptions {
   ocr::OcrRecognizerOptions ocr_recognizer;
   CandidateMergeOptions candidate_merge;
   VisualContainerOptions visual_containers;
+  BoundarylessGroupOptions boundaryless_groups;
+  LineRectOptions line_rects;
 };
 
 struct PipelineStats {
@@ -30,6 +34,8 @@ struct PipelineStats {
   std::size_t text_region_count{};
   std::size_t candidate_count{};
   std::size_t visual_container_count{};
+  std::size_t inferred_group_count{};
+  std::size_t line_rect_count{};
 };
 
 struct PipelineResult {

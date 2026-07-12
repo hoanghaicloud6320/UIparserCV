@@ -127,6 +127,8 @@ int main(int argc, char** argv) {
               << "icons: " << result.stats.icon_count << '\n'
               << "text_regions: " << result.stats.text_region_count << '\n'
               << "visual_containers: " << result.stats.visual_container_count << '\n'
+              << "line_rects: " << result.stats.line_rect_count << '\n'
+              << "inferred_groups: " << result.stats.inferred_group_count << '\n'
               << "candidates: " << result.stats.candidate_count << '\n'
               << "output: " << cli.output.string() << '\n';
     if (!cli.debug_image.empty()) {

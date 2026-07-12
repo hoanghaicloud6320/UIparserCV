@@ -38,7 +38,7 @@ std::string kind_name(const pipeline::UiElementCandidate& candidate) {
   if (candidate.kind == pipeline::UiElementKind::Text) {
     return "text";
   }
-  return "container";
+  return candidate.kind == pipeline::UiElementKind::VisualContainer ? "container" : "group";
 }
 
 cv::Scalar color_for(const pipeline::UiElementCandidate& candidate) {
@@ -48,7 +48,9 @@ cv::Scalar color_for(const pipeline::UiElementCandidate& candidate) {
   if (candidate.kind == pipeline::UiElementKind::Text) {
     return cv::Scalar(25, 95, 230);
   }
-  return cv::Scalar(40, 180, 210);
+  return candidate.kind == pipeline::UiElementKind::VisualContainer
+      ? cv::Scalar(40, 180, 210)
+      : cv::Scalar(190, 70, 190);
 }
 
 bool is_group_node(const tree::TreeNode& node) {
@@ -328,8 +330,8 @@ void write_tree_metadata(
 }
 
 void draw_legend(cv::Mat& image) {
-  cv::rectangle(image, {8, 8, 260, 96}, cv::Scalar(255, 255, 255), cv::FILLED, cv::LINE_AA);
-  cv::rectangle(image, {8, 8, 260, 96}, cv::Scalar(220, 224, 230), 1, cv::LINE_AA);
+  cv::rectangle(image, {8, 8, 280, 116}, cv::Scalar(255, 255, 255), cv::FILLED, cv::LINE_AA);
+  cv::rectangle(image, {8, 8, 280, 116}, cv::Scalar(220, 224, 230), 1, cv::LINE_AA);
   cv::rectangle(image, {18, 20, 18, 12}, cv::Scalar(25, 95, 230), 2, cv::LINE_AA);
   cv::putText(
       image,
@@ -353,11 +355,14 @@ void draw_legend(cv::Mat& image) {
   cv::rectangle(image, {18, 62, 18, 12}, cv::Scalar(40, 180, 210), 2, cv::LINE_AA);
   cv::putText(image, "visual color container", {44, 73}, cv::FONT_HERSHEY_SIMPLEX, 0.4,
               cv::Scalar(35, 40, 48), 1, cv::LINE_AA);
-  cv::arrowedLine(image, {18, 86}, {36, 86}, cv::Scalar(20, 190, 235), 2, cv::LINE_AA, 0, 0.2);
+  cv::rectangle(image, {18, 82, 18, 12}, cv::Scalar(190, 70, 190), 2, cv::LINE_AA);
+  cv::putText(image, "boundaryless inferred group", {44, 93}, cv::FONT_HERSHEY_SIMPLEX, 0.4,
+              cv::Scalar(35, 40, 48), 1, cv::LINE_AA);
+  cv::arrowedLine(image, {18, 106}, {36, 106}, cv::Scalar(20, 190, 235), 2, cv::LINE_AA, 0, 0.2);
   cv::putText(
       image,
       "containment parent -> direct child",
-      {44, 92},
+      {44, 112},
       cv::FONT_HERSHEY_SIMPLEX,
       0.4,
       cv::Scalar(35, 40, 48),
@@ -400,6 +405,8 @@ void write_debug_overlay(
     out << "stats: icons=" << result.stats.icon_count
         << ", text_regions=" << result.stats.text_region_count
         << ", visual_containers=" << result.stats.visual_container_count
+        << ", line_rects=" << result.stats.line_rect_count
+        << ", inferred_groups=" << result.stats.inferred_group_count
         << ", candidates=" << result.stats.candidate_count << '\n';
     out << '\n';
     out << "RAW ICON DETECTIONS\n\n";
