@@ -32,6 +32,9 @@ const pipeline::UiElementCandidate* candidate_for_node_id(
 }
 
 std::string kind_name(const pipeline::UiElementCandidate& candidate) {
+  if (candidate.kind == pipeline::UiElementKind::ModelProposal) {
+    return "model";
+  }
   if (candidate.kind == pipeline::UiElementKind::Icon) {
     return "icon";
   }
@@ -42,6 +45,9 @@ std::string kind_name(const pipeline::UiElementCandidate& candidate) {
 }
 
 cv::Scalar color_for(const pipeline::UiElementCandidate& candidate) {
+  if (candidate.kind == pipeline::UiElementKind::ModelProposal) {
+    return cv::Scalar(40, 200, 40);
+  }
   if (candidate.kind == pipeline::UiElementKind::Icon) {
     return cv::Scalar(210, 120, 25);
   }
@@ -51,6 +57,24 @@ cv::Scalar color_for(const pipeline::UiElementCandidate& candidate) {
   return candidate.kind == pipeline::UiElementKind::VisualContainer
       ? cv::Scalar(40, 180, 210)
       : cv::Scalar(190, 70, 190);
+}
+
+void draw_associations(
+    cv::Mat& image,
+    const pipeline::PipelineResult& result) {
+  for (const auto& association : result.associations) {
+    if (association.proposal_index >= result.candidates.size() ||
+        association.text_index >= result.candidates.size()) continue;
+    const auto& proposal = result.candidates[association.proposal_index].box;
+    const auto& text = result.candidates[association.text_index].box;
+    const cv::Point from{
+        static_cast<int>(std::round(proposal.x + proposal.width / 2.0F)),
+        static_cast<int>(std::round(proposal.y + proposal.height / 2.0F))};
+    const cv::Point to{
+        static_cast<int>(std::round(text.x + text.width / 2.0F)),
+        static_cast<int>(std::round(text.y + text.height / 2.0F))};
+    cv::line(image, from, to, cv::Scalar(230, 80, 220), 1, cv::LINE_AA);
+  }
 }
 
 bool is_group_node(const tree::TreeNode& node) {
@@ -330,12 +354,12 @@ void write_tree_metadata(
 }
 
 void draw_legend(cv::Mat& image) {
-  cv::rectangle(image, {8, 8, 280, 116}, cv::Scalar(255, 255, 255), cv::FILLED, cv::LINE_AA);
-  cv::rectangle(image, {8, 8, 280, 116}, cv::Scalar(220, 224, 230), 1, cv::LINE_AA);
+  cv::rectangle(image, {8, 8, 300, 138}, cv::Scalar(255, 255, 255), cv::FILLED, cv::LINE_AA);
+  cv::rectangle(image, {8, 8, 300, 138}, cv::Scalar(220, 224, 230), 1, cv::LINE_AA);
   cv::rectangle(image, {18, 20, 18, 12}, cv::Scalar(25, 95, 230), 2, cv::LINE_AA);
   cv::putText(
       image,
-      "text",
+      "OCR text (geometry preserved)",
       {44, 31},
       cv::FONT_HERSHEY_SIMPLEX,
       0.4,
@@ -345,24 +369,24 @@ void draw_legend(cv::Mat& image) {
   cv::rectangle(image, {18, 41, 18, 12}, cv::Scalar(210, 120, 25), 2, cv::LINE_AA);
   cv::putText(
       image,
-      "icon / interactive",
+      "OmniParser support icon",
       {44, 52},
       cv::FONT_HERSHEY_SIMPLEX,
       0.4,
       cv::Scalar(35, 40, 48),
       1,
       cv::LINE_AA);
-  cv::rectangle(image, {18, 62, 18, 12}, cv::Scalar(40, 180, 210), 2, cv::LINE_AA);
-  cv::putText(image, "visual color container", {44, 73}, cv::FONT_HERSHEY_SIMPLEX, 0.4,
+  cv::rectangle(image, {18, 62, 18, 12}, cv::Scalar(40, 200, 40), 2, cv::LINE_AA);
+  cv::putText(image, "UITag model proposal", {44, 73}, cv::FONT_HERSHEY_SIMPLEX, 0.4,
               cv::Scalar(35, 40, 48), 1, cv::LINE_AA);
-  cv::rectangle(image, {18, 82, 18, 12}, cv::Scalar(190, 70, 190), 2, cv::LINE_AA);
-  cv::putText(image, "boundaryless inferred group", {44, 93}, cv::FONT_HERSHEY_SIMPLEX, 0.4,
+  cv::line(image, {18, 87}, {36, 87}, cv::Scalar(230, 80, 220), 2, cv::LINE_AA);
+  cv::putText(image, "model - OCR association", {44, 93}, cv::FONT_HERSHEY_SIMPLEX, 0.4,
               cv::Scalar(35, 40, 48), 1, cv::LINE_AA);
-  cv::arrowedLine(image, {18, 106}, {36, 106}, cv::Scalar(20, 190, 235), 2, cv::LINE_AA, 0, 0.2);
+  cv::arrowedLine(image, {18, 110}, {36, 110}, cv::Scalar(20, 190, 235), 2, cv::LINE_AA, 0, 0.2);
   cv::putText(
       image,
       "containment parent -> direct child",
-      {44, 112},
+      {44, 116},
       cv::FONT_HERSHEY_SIMPLEX,
       0.4,
       cv::Scalar(35, 40, 48),
@@ -387,6 +411,7 @@ void write_debug_overlay(
     ensure_parent_dir(options.image_path);
     cv::Mat overlay = bgr_image.clone();
     const TextDrawer text_drawer;
+    draw_associations(overlay, result);
     draw_tree_node(overlay, result.tree, result, text_drawer);
     draw_legend(overlay);
     if (!cv::imwrite(options.image_path.string(), overlay)) {
@@ -402,14 +427,27 @@ void write_debug_overlay(
     }
 
     out << "image: " << result.stats.image_width << 'x' << result.stats.image_height << '\n';
-    out << "stats: icons=" << result.stats.icon_count
+    out << "stats: uitag_raw=" << result.stats.uitag_raw_count
+        << ", uitag=" << result.stats.uitag_count
+        << ", support_icons_raw=" << result.stats.icon_count
         << ", text_regions=" << result.stats.text_region_count
+        << ", associations=" << result.stats.association_count
         << ", visual_containers=" << result.stats.visual_container_count
         << ", line_rects=" << result.stats.line_rect_count
         << ", inferred_groups=" << result.stats.inferred_group_count
         << ", candidates=" << result.stats.candidate_count << '\n';
     out << '\n';
-    out << "RAW ICON DETECTIONS\n\n";
+    out << "RAW UITAG DETECTIONS (BEFORE CROSS-TILE NMS)\n\n";
+    for (std::size_t i = 0; i < result.uitag_raw_detections.size(); ++i) {
+      const auto& detection = result.uitag_raw_detections[i];
+      out << "- uitag_raw[" << i << "] rect=["
+          << detection.box.x << ',' << detection.box.y << ','
+          << detection.box.width << ',' << detection.box.height << "]"
+          << " score=" << std::fixed << std::setprecision(3) << detection.score
+          << " class='" << detect::UitagDetector::class_name(detection.class_id) << "'\n";
+    }
+    out << '\n';
+    out << "RAW OMNIPARSER SUPPORT ICON DETECTIONS\n\n";
     for (std::size_t i = 0; i < result.icons.size(); ++i) {
       const auto& detection = result.icons[i];
       out << "- icon_raw[" << i << "] rect=["
@@ -417,6 +455,13 @@ void write_debug_overlay(
           << detection.box.width << ',' << detection.box.height << "]"
           << " score=" << std::fixed << std::setprecision(3) << detection.score
           << " label='" << detection.label << "'" << '\n';
+    }
+    out << '\n';
+    out << "MODEL/OCR ASSOCIATIONS\n\n";
+    for (const auto& association : result.associations) {
+      out << "- candidate[" << association.proposal_index << "] -> candidate["
+          << association.text_index << "] relation=" << association.relation
+          << " confidence=" << association.confidence << '\n';
     }
     out << '\n';
     out << "RAW OCR REGIONS + RECOGNITION\n\n";

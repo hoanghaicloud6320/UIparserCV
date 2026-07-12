@@ -208,7 +208,8 @@ std::vector<UiElementCandidate> detect_visual_containers(
       "",
       0.0F,
       false,
-      "visual_color_container"
+      "visual_color_container",
+      ""
     });
   }
 

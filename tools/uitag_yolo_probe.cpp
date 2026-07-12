@@ -29,6 +29,23 @@ void write_json(
     const uiparsercv::detect::UitagResult& result) {
   std::ofstream out(path);
   if (!out) throw std::runtime_error("cannot write JSON: " + path.string());
+  const auto write_detections = [&](
+      std::string_view name,
+      const std::vector<uiparsercv::detect::UitagDetection>& detections,
+      bool trailing_comma) {
+    out << "  \"" << name << "\": [\n";
+    for (std::size_t i = 0; i < detections.size(); ++i) {
+      const auto& detection = detections[i];
+      out << "    {\"class_id\": " << detection.class_id << ", \"class\": \""
+          << uiparsercv::detect::UitagDetector::class_name(detection.class_id)
+          << "\", \"score\": " << std::fixed << std::setprecision(6) << detection.score
+          << ", \"box_xywh\": [" << detection.box.x << ", " << detection.box.y << ", "
+          << detection.box.width << ", " << detection.box.height << "]}"
+          << (i + 1 == detections.size() ? "\n" : ",\n");
+    }
+    out << "  ]" << (trailing_comma ? ",\n" : "\n");
+  };
+
   out << "{\n  \"model\": \"" << model_path.generic_string()
       << "\",\n  \"image_width\": " << image.cols
       << ",\n  \"image_height\": " << image.rows
@@ -39,17 +56,10 @@ void write_json(
       << ",\n  \"tile_nms_iou\": " << options.tile_nms_iou
       << ",\n  \"cross_tile_nms_iou\": " << options.cross_tile_nms_iou
       << ",\n  \"raw_detection_count\": " << result.raw_detections.size()
-      << ",\n  \"detections\": [\n";
-  for (std::size_t i = 0; i < result.detections.size(); ++i) {
-    const auto& detection = result.detections[i];
-    out << "    {\"class_id\": " << detection.class_id << ", \"class\": \""
-        << uiparsercv::detect::UitagDetector::class_name(detection.class_id)
-        << "\", \"score\": " << std::fixed << std::setprecision(6) << detection.score
-        << ", \"box_xywh\": [" << detection.box.x << ", " << detection.box.y << ", "
-        << detection.box.width << ", " << detection.box.height << "]}"
-        << (i + 1 == result.detections.size() ? "\n" : ",\n");
-  }
-  out << "  ]\n}\n";
+      << ",\n  \"detection_count\": " << result.detections.size() << ",\n";
+  write_detections("raw_detections", result.raw_detections, true);
+  write_detections("detections", result.detections, false);
+  out << "}\n";
 }
 
 }  // namespace

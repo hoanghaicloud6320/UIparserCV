@@ -261,7 +261,8 @@ std::vector<UiElementCandidate> detect_boundaryless_groups(
         false,
         proposal.type == PatternType::HorizontalIconText
             ? "boundaryless_repeated_icon_text"
-            : "boundaryless_repeated_text_stack"
+            : "boundaryless_repeated_text_stack",
+        ""
       });
     }
   }

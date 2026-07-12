@@ -18,15 +18,20 @@ struct CliOptions {
   std::filesystem::path debug_image;
   std::filesystem::path debug_metadata;
   std::filesystem::path icon_model{UIPARSERCV_ICON_MODEL};
+  std::filesystem::path uitag_model{UIPARSERCV_UITAG_MODEL};
   std::filesystem::path ocr_det_model{UIPARSERCV_OCR_DET_MODEL};
   std::filesystem::path ocr_rec_model{UIPARSERCV_OCR_REC_MODEL};
   std::filesystem::path ocr_rec_config{UIPARSERCV_OCR_REC_CONFIG};
+  bool legacy_icon_support{true};
+  bool legacy_heuristics{false};
 };
 
 void print_usage(std::ostream& out) {
   out << "usage: uiparsercv_pipeline <input-image> [--out output.json]\n"
       << "       [--debug-image overlay.png] [--debug-meta metadata.txt]\n"
       << "       [--icon-model model.onnx]\n"
+      << "       [--uitag-model model.onnx] [--no-legacy-icon-support]\n"
+      << "       [--legacy-heuristics]\n"
       << "       [--ocr-det-model det.onnx] [--ocr-rec-model rec.onnx]\n"
       << "       [--ocr-rec-config rec.yml]\n";
 }
@@ -61,6 +66,15 @@ CliOptions parse_args(int argc, char** argv) {
         throw std::runtime_error("--icon-model requires a path");
       }
       options.icon_model = argv[++i];
+    } else if (arg == "--uitag-model") {
+      if (i + 1 >= argc) {
+        throw std::runtime_error("--uitag-model requires a path");
+      }
+      options.uitag_model = argv[++i];
+    } else if (arg == "--no-legacy-icon-support") {
+      options.legacy_icon_support = false;
+    } else if (arg == "--legacy-heuristics") {
+      options.legacy_heuristics = true;
     } else if (arg == "--ocr-det-model") {
       if (i + 1 >= argc) {
         throw std::runtime_error("--ocr-det-model requires a path");
@@ -94,6 +108,9 @@ int main(int argc, char** argv) {
     const CliOptions cli = parse_args(argc, argv);
 
     uiparsercv::pipeline::PipelineOptions options;
+    options.uitag_model_path = cli.uitag_model;
+    options.enable_legacy_icon_support = cli.legacy_icon_support;
+    options.enable_legacy_heuristics = cli.legacy_heuristics;
     options.icon.model_path = cli.icon_model;
     options.ocr_detector.model_path = cli.ocr_det_model;
     options.ocr_recognizer.model_path = cli.ocr_rec_model;
@@ -124,8 +141,11 @@ int main(int argc, char** argv) {
             cli.debug_metadata});
 
     std::cout << "image: " << result.stats.image_width << "x" << result.stats.image_height << '\n'
-              << "icons: " << result.stats.icon_count << '\n'
+              << "uitag_raw: " << result.stats.uitag_raw_count << '\n'
+              << "uitag: " << result.stats.uitag_count << '\n'
+              << "support_icons_raw: " << result.stats.icon_count << '\n'
               << "text_regions: " << result.stats.text_region_count << '\n'
+              << "associations: " << result.stats.association_count << '\n'
               << "visual_containers: " << result.stats.visual_container_count << '\n'
               << "line_rects: " << result.stats.line_rect_count << '\n'
               << "inferred_groups: " << result.stats.inferred_group_count << '\n'

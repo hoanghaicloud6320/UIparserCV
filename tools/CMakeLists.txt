@@ -56,6 +56,27 @@ if(TARGET uiparsercv_infer)
   target_compile_features(boundaryless_group_probe PRIVATE cxx_std_20)
   add_test(NAME boundaryless_group_probe COMMAND boundaryless_group_probe)
 
+  add_executable(combined_pipeline_test combined_pipeline_test.cpp)
+  target_link_libraries(combined_pipeline_test PRIVATE uiparsercv_pipeline)
+  target_compile_features(combined_pipeline_test PRIVATE cxx_std_20)
+  add_test(NAME combined_pipeline_test COMMAND combined_pipeline_test)
+
+  if(WIN32)
+    add_executable(live_overlay WIN32 live_overlay.cpp)
+    set_target_properties(live_overlay PROPERTIES OUTPUT_NAME "live-overlay")
+    target_link_libraries(live_overlay PRIVATE uiparsercv_pipeline user32 gdi32)
+    target_compile_features(live_overlay PRIVATE cxx_std_20)
+    target_compile_definitions(live_overlay
+      PRIVATE
+        UIPARSERCV_UITAG_MODEL="${UIPARSERCV_UITAG_MODEL}"
+        UIPARSERCV_ICON_MODEL="${UIPARSERCV_ICON_MODEL}"
+        UIPARSERCV_OCR_DET_MODEL="${UIPARSERCV_OCR_DET_MODEL}"
+        UIPARSERCV_OCR_REC_MODEL="${UIPARSERCV_OCR_REC_MODEL}"
+        UIPARSERCV_OCR_REC_CONFIG="${UIPARSERCV_OCR_REC_CONFIG}"
+    )
+    uiparsercv_copy_onnxruntime(live_overlay)
+  endif()
+
   add_executable(line_rect_probe line_rect_probe.cpp)
   target_link_libraries(line_rect_probe PRIVATE uiparsercv_pipeline)
   target_compile_features(line_rect_probe PRIVATE cxx_std_20)
@@ -67,6 +88,7 @@ if(TARGET uiparsercv_infer)
   target_compile_definitions(component_probe
     PRIVATE
       UIPARSERCV_ICON_MODEL="${UIPARSERCV_ICON_MODEL}"
+      UIPARSERCV_UITAG_MODEL="${UIPARSERCV_UITAG_MODEL}"
       UIPARSERCV_OCR_DET_MODEL="${UIPARSERCV_OCR_DET_MODEL}"
       UIPARSERCV_OCR_REC_MODEL="${UIPARSERCV_OCR_REC_MODEL}"
       UIPARSERCV_OCR_REC_CONFIG="${UIPARSERCV_OCR_REC_CONFIG}"
@@ -80,6 +102,7 @@ if(TARGET uiparsercv_infer)
   target_compile_definitions(model_combo_compare
     PRIVATE
       UIPARSERCV_ICON_MODEL="${UIPARSERCV_ICON_MODEL}"
+      UIPARSERCV_UITAG_MODEL="${UIPARSERCV_UITAG_MODEL}"
       UIPARSERCV_OCR_TINY_DET_MODEL="${UIPARSERCV_OCR_TINY_DET_MODEL}"
       UIPARSERCV_OCR_TINY_REC_MODEL="${UIPARSERCV_OCR_TINY_REC_MODEL}"
       UIPARSERCV_OCR_TINY_REC_CONFIG="${UIPARSERCV_OCR_TINY_REC_CONFIG}"

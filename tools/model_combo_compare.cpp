@@ -78,6 +78,7 @@ int main(int argc, char** argv) {
 
     for (const auto& combo : combos) {
       uiparsercv::pipeline::PipelineOptions options;
+      options.uitag_model_path = UIPARSERCV_UITAG_MODEL;
       options.icon.model_path = UIPARSERCV_ICON_MODEL;
       options.ocr_detector.model_path = combo.det_model;
       options.ocr_recognizer.model_path = combo.rec_model;

@@ -2,13 +2,14 @@
 
 UIparserCV là dự án C++20 để phân tích ảnh chụp giao diện người dùng và xuất ra cây cấu trúc UI.
 
-Pipeline mục tiêu:
+Pipeline mặc định:
 
 ```text
 ảnh input
-  -> icon detector
-  -> OCR detector + recognizer
-  -> thuật toán merge box / containment tree bằng C++
+  -> UITag tiled detector (proposal chính)
+  -> OmniParser icon detector (chỉ bổ sung box mới)
+  -> OCR detector + recognizer (giữ box text độc lập)
+  -> association bảo thủ + strict laminar containment tree
   -> UI tree: JSON, XML, YAML, ...
 ```
 
@@ -39,6 +40,8 @@ Repo đang ở giai đoạn dựng nền và thử từng component độc lập
 - Probe chạy các component inference trên ảnh smoke test.
 - Synthetic UI corpus generator: sinh vài chục ảnh UI giả lập kèm ground truth JSON để regression test detector/tree/debug overlay.
 - CLI pipeline đầu tiên: `uiparsercv_pipeline.exe`.
+- Pipeline model-first kết hợp UITag + OmniParser support + PP-OCRv6; heuristic
+  line/color/proximity cũ tắt mặc định.
 
 Đã kiểm tra local:
 
@@ -228,6 +231,11 @@ Xuất thêm ảnh debug overlay và metadata tree/box:
   --debug-meta output.meta.txt
 ```
 
+Mặc định CLI chạy pipeline model-first. Có thể tắt model icon bổ sung bằng
+`--no-legacy-icon-support`. Cờ `--legacy-heuristics` chỉ dùng để so sánh/ablation,
+không phải đường chạy production mặc định. Có thể đổi UITag model bằng
+`--uitag-model path\to\model.onnx`.
+
 Output JSON hiện gồm:
 
 - `image`: kích thước ảnh.
@@ -270,6 +278,24 @@ Combo hiện có:
 - `medium_det_medium_rec`
 
 Tool này dùng cùng pipeline C++ và cùng debug overlay, phù hợp để chọn default model bằng mắt trước khi có benchmark định lượng.
+
+## Live Overlay
+
+`live-overlay` chụp một vùng màn hình theo yêu cầu và hiển thị kết quả của
+pipeline kết hợp trong cửa sổ riêng. Tool không quay video và không tự chụp lại:
+mỗi lần bấm `New snip` chỉ tạo và xử lý đúng một screenshot.
+
+```powershell
+.\build\tools\live-overlay.exe
+```
+
+Kéo rectangle trên ảnh toàn màn hình rồi nhấn Enter để chọn vùng. Ảnh bên trái
+chỉ chứa detection box và association; legend, trạng thái inference và thống kê
+nằm ở panel bên phải.
+
+- `R`: chọn lại vùng màn hình.
+- `Esc`: thoát.
+- Nút `Exit` hoặc nút đóng `X`: đóng hoàn toàn chương trình.
 
 ## Module Dự Kiến
 

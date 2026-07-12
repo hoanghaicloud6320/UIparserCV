@@ -251,7 +251,8 @@ std::vector<UiElementCandidate> repeated_vertical_divider_cells(
         "",
         0.0F,
         false,
-        "line_grid_cell_vertical_dividers"
+        "line_grid_cell_vertical_dividers",
+        ""
       });
     }
   }
@@ -395,7 +396,8 @@ std::vector<UiElementCandidate> detect_line_rects(
             "",
             0.0F,
             false,
-            "line_rect_4sides"
+            "line_rect_4sides",
+            ""
           });
         }
       }

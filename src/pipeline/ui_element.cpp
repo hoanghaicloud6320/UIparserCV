@@ -21,6 +21,12 @@ float intersection_area(const RectF& lhs, const RectF& rhs) {
   return std::max(0.0F, right - left) * std::max(0.0F, bottom - top);
 }
 
+float intersection_over_union(const RectF& lhs, const RectF& rhs) {
+  const float intersection = intersection_area(lhs, rhs);
+  const float total = area(lhs) + area(rhs) - intersection;
+  return total > 0.0F ? intersection / total : 0.0F;
+}
+
 float omni_overlap(const RectF& lhs, const RectF& rhs) {
   const float inter = intersection_area(lhs, rhs);
   const float lhs_area = area(lhs);
@@ -41,6 +47,89 @@ bool is_inside(const RectF& inner, const RectF& outer) {
 }
 
 } // namespace
+
+CombinedCandidates build_model_ocr_candidates(
+    const std::vector<detect::UitagDetection>& model_detections,
+    const std::vector<Detection>& legacy_icons,
+    const std::vector<TextRegion>& text_regions,
+    const std::vector<TextRecognition>& recognized_text,
+    ModelOcrMergeOptions options) {
+  if (text_regions.size() != recognized_text.size()) {
+    throw std::runtime_error("text region count does not match recognition count");
+  }
+
+  CombinedCandidates result;
+  result.candidates.reserve(
+      model_detections.size() + legacy_icons.size() + text_regions.size());
+
+  for (const auto& detection : model_detections) {
+    result.candidates.push_back(UiElementCandidate{
+        UiElementKind::ModelProposal,
+        {detection.box.x, detection.box.y, detection.box.width, detection.box.height},
+        detection.score,
+        {}, {}, {}, 0.0F,
+        detection.class_id == 0 || detection.class_id == 1 || detection.class_id == 2 ||
+            detection.class_id == 3,
+        "uitag_yolo11",
+        std::string(detect::UitagDetector::class_name(detection.class_id))});
+  }
+
+  // OmniParser is supporting evidence only: keep boxes that add spatial coverage
+  // instead of duplicating an existing UITag proposal.
+  for (const auto& icon : legacy_icons) {
+    bool novel = true;
+    for (const auto& candidate : result.candidates) {
+      if (intersection_over_union(icon.box, candidate.box) >= options.legacy_icon_novelty_iou ||
+          is_inside(icon.box, candidate.box)) {
+        novel = false;
+        break;
+      }
+    }
+    if (!novel) continue;
+    result.candidates.push_back(UiElementCandidate{
+        UiElementKind::Icon, icon.box, icon.score, {}, {}, {}, 0.0F, true,
+        "omniparser_icon_support", icon.label});
+  }
+
+  const std::size_t proposal_count = result.candidates.size();
+  for (std::size_t i = 0; i < text_regions.size(); ++i) {
+    const auto text = ocr::normalize_text(recognized_text[i].text);
+    result.candidates.push_back(UiElementCandidate{
+        UiElementKind::Text, text_regions[i].box, text_regions[i].score,
+        text.normalized, text.raw, text.normalized, recognized_text[i].confidence,
+        false, "ocr_box_and_content", "Text"});
+  }
+
+  for (std::size_t text_offset = 0; text_offset < text_regions.size(); ++text_offset) {
+    const std::size_t text_index = proposal_count + text_offset;
+    const RectF& text_box = result.candidates[text_index].box;
+    std::size_t best = proposal_count;
+    float best_area = 0.0F;
+    float best_cover = 0.0F;
+    for (std::size_t proposal = 0; proposal < proposal_count; ++proposal) {
+      const auto& proposal_box = result.candidates[proposal].box;
+      const float text_area = area(text_box);
+      const float cover = text_area > 0.0F
+          ? intersection_area(text_box, proposal_box) / text_area
+          : 0.0F;
+      if (cover < options.text_containment_threshold) continue;
+      const float proposal_area = area(proposal_box);
+      if (best == proposal_count || proposal_area < best_area) {
+        best = proposal;
+        best_area = proposal_area;
+        best_cover = cover;
+      }
+    }
+    if (best == proposal_count) continue;
+
+    const float iou = intersection_over_union(result.candidates[best].box, text_box);
+    result.associations.push_back(CandidateAssociation{
+        best, text_index, std::max(best_cover, iou),
+        iou >= options.near_identical_iou ? "same_observation" : "text_in_control"});
+  }
+
+  return result;
+}
 
 std::vector<UiElementCandidate> build_candidates(
     const std::vector<Detection>& icons,
@@ -64,7 +153,8 @@ std::vector<UiElementCandidate> build_candidates(
       text.normalized,
       recognized_text[i].confidence,
       false,
-      "box_ocr_content_ocr"
+      "box_ocr_content_ocr",
+      "Text"
     });
   }
 
@@ -131,7 +221,8 @@ std::vector<UiElementCandidate> build_candidates(
       absorbed_text,
       absorbed_count > 0 ? absorbed_confidence / static_cast<float>(absorbed_count) : 0.0F,
       true,
-      absorbed_text.empty() ? "box_yolo_content_yolo" : "box_yolo_content_ocr"
+      absorbed_text.empty() ? "box_yolo_content_yolo" : "box_yolo_content_ocr",
+      icons[i].label
     });
   }
 

@@ -58,7 +58,9 @@ void candidate_json(std::ostream& out, const pipeline::UiElementCandidate& candi
   out << "{\n";
   indent(out, level + 2);
   out << "\"kind\": ";
-  if (candidate.kind == pipeline::UiElementKind::Icon) {
+  if (candidate.kind == pipeline::UiElementKind::ModelProposal) {
+    json_string(out, "model_proposal");
+  } else if (candidate.kind == pipeline::UiElementKind::Icon) {
     json_string(out, "icon");
   } else if (candidate.kind == pipeline::UiElementKind::Text) {
     json_string(out, "text");
@@ -101,6 +103,11 @@ void candidate_json(std::ostream& out, const pipeline::UiElementCandidate& candi
   indent(out, level + 2);
   out << "\"source\": ";
   json_string(out, candidate.source);
+  out << ",\n";
+
+  indent(out, level + 2);
+  out << "\"model_class\": ";
+  json_string(out, candidate.model_class);
   out << '\n';
 
   indent(out, level);
@@ -157,11 +164,29 @@ void write_json(std::ostream& out, const pipeline::PipelineResult& result) {
 
   indent(out, 2);
   out << "\"stats\": {\"icons\": " << result.stats.icon_count
+      << ", \"uitag_raw\": " << result.stats.uitag_raw_count
+      << ", \"uitag\": " << result.stats.uitag_count
       << ", \"text_regions\": " << result.stats.text_region_count
+      << ", \"associations\": " << result.stats.association_count
       << ", \"visual_containers\": " << result.stats.visual_container_count
       << ", \"line_rects\": " << result.stats.line_rect_count
       << ", \"inferred_groups\": " << result.stats.inferred_group_count
       << ", \"candidates\": " << result.stats.candidate_count << "},\n";
+
+  indent(out, 2);
+  out << "\"raw_uitag_detections\": [";
+  if (!result.uitag_raw_detections.empty()) out << '\n';
+  for (std::size_t i = 0; i < result.uitag_raw_detections.size(); ++i) {
+    const auto& detection = result.uitag_raw_detections[i];
+    indent(out, 4);
+    out << "{\"class_id\": " << detection.class_id << ", \"class\": ";
+    json_string(out, std::string(detect::UitagDetector::class_name(detection.class_id)));
+    out << ", \"score\": " << detection.score << ", \"box\": ";
+    rect_json(out, {detection.box.x, detection.box.y, detection.box.width, detection.box.height});
+    out << '}' << (i + 1 < result.uitag_raw_detections.size() ? "," : "") << '\n';
+  }
+  if (!result.uitag_raw_detections.empty()) indent(out, 2);
+  out << "],\n";
 
   indent(out, 2);
   out << "\"candidates\": [";
@@ -178,6 +203,22 @@ void write_json(std::ostream& out, const pipeline::PipelineResult& result) {
   if (!result.candidates.empty()) {
     indent(out, 2);
   }
+  out << "],\n";
+
+  indent(out, 2);
+  out << "\"associations\": [";
+  if (!result.associations.empty()) out << '\n';
+  for (std::size_t i = 0; i < result.associations.size(); ++i) {
+    const auto& association = result.associations[i];
+    indent(out, 4);
+    out << "{\"proposal_index\": " << association.proposal_index
+        << ", \"text_index\": " << association.text_index
+        << ", \"confidence\": " << association.confidence
+        << ", \"relation\": ";
+    json_string(out, association.relation);
+    out << '}' << (i + 1 < result.associations.size() ? "," : "") << '\n';
+  }
+  if (!result.associations.empty()) indent(out, 2);
   out << "],\n";
 
   indent(out, 2);

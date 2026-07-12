@@ -108,26 +108,26 @@ false-positive growth.
   and cross-tile NMS.
 - [x] Record inference options and model metadata in raw output.
 
-### Phase 2: model-only exper1 baseline
+### Phase 2: model-only exper1 baseline (complete)
 
-- Run all exper1 images with unchanged thresholds.
-- Save raw model detections and overlays separately from every heuristic run.
-- Manually inspect desktop and mobile results.
-- Catalogue duplicate boxes, oversized boxes, missed controls, class noise,
-  and domain-shift failures.
+- [x] Run all exper1 images with unchanged thresholds.
+- [x] Save raw model detections and overlays separately from every heuristic run.
+- [x] Manually inspect desktop and mobile results.
+- [x] Catalogue duplicate boxes, oversized boxes, missed controls, class noise,
+  and domain-shift failures in `docs/uitag-model-only-exper1.md`.
 
-### Phase 3: OCR association
+### Phase 3: OCR association (complete)
 
-- Combine raw OCR and model observations without constructing semantic groups.
-- Visualize both boxes and their association edges.
-- Verify that tight text boxes remain intact, including the prior weather-card
+- [x] Combine raw OCR and model observations without constructing semantic groups.
+- [x] Visualize both boxes and their association edges.
+- [x] Verify that tight text boxes remain intact, including the prior weather-card
   failure where text geometry was confused with a larger card box.
 
-### Phase 4: conservative tree
+### Phase 4: conservative tree (complete)
 
-- Build immediate containment from normalized candidates.
-- Add only high-confidence text/control associations.
-- Compare against model-only and the committed heuristic baseline.
+- [x] Build immediate containment from a laminar selection of normalized candidates.
+- [x] Add only high-confidence contained-text/control associations.
+- [x] Keep the model-only and legacy heuristic paths available for comparison.
 
 ### Phase 5: optional support evidence
 
@@ -136,9 +136,10 @@ false-positive growth.
 
 ## Immediate next task
 
-Do not integrate the detector directly into `PipelineRunner` yet. Produce a
-complete model-only exper1 run next. That run becomes the baseline for deciding
-merge and grouping behavior.
+The combined `PipelineRunner` now uses UITag proposals, independent OCR boxes,
+and novel OmniParser icon support. Legacy visual/line/boundaryless heuristics are
+disabled by default and can be enabled only for comparison. Next, revisit an
+individual support heuristic only for a catalogued miss and require an ablation.
 
 ## Historical findings retained
 
